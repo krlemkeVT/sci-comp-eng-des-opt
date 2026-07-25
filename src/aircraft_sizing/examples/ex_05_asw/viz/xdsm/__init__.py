@@ -1,0 +1,1 @@
+"""XDSM assets for the ASW worked example."""
