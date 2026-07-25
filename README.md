@@ -70,11 +70,14 @@ The page has a **control sidebar on the left** and **results on the right**. Res
 
 **Sidebar controls** (grouped in expanders):
 
-- **Mission / crew — sliders.** Drag to change the headline mission parameters: one-way cruise range, cruise Mach number, cruise altitude, speed of sound at altitude, mission-equipment weight, crew weight, on-station loiter endurance, and prelanding loiter endurance.
-- **Segment / propulsion — number fields.** Warmup/takeoff, climb, and landing weight ratios; cruise and loiter TSFC.
-- **Aerodynamics / allowances — number fields.** Wing aspect ratio, wetted-area ratio, maximum L/D, cruise L/D factor, reserve and trapped/unusable fuel fractions, and the empty-weight regression coefficient/exponent.
+- **Mission — sliders.** Drag to change the three headline mission parameters: one-way cruise range, mission-equipment weight, and on-station loiter endurance.
+- **Propulsion — number fields.** Cruise and loiter TSFC.
+- **Aerodynamics — number fields.** Wing aspect ratio and wetted-area ratio S_wet/S_ref. Maximum L/D is *computed* from these (Raymer Eq. 3.12), not entered.
+- **Structure — radio.** Switch between **metal** and **composite** (composite scales the empty-weight fraction by 0.95).
 - **Solver controls — number fields.** Initial TOGW guess, convergence tolerance, and maximum iterations.
-- **One-at-a-time sensitivity sweep.** Pick the swept input (dropdown), the ± span (slider), and the number of samples.
+- **One-at-a-time sensitivity sweep.** Pick the swept input — cruise range, mission-equipment weight, aspect ratio, or cruise TSFC — plus the ± span (slider) and number of samples.
+
+Everything else (cruise Mach, altitude, speed of sound, crew weight, prelanding loiter, historical segment ratios, and the fuel/empty-weight allowances) stays fixed at the Raymer 3.6 baseline.
 
 **Buttons:**
 
