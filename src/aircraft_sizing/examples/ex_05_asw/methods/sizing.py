@@ -8,7 +8,7 @@ iteration history, and one-at-a-time input sensitivity sweeps.
 from __future__ import annotations
 
 from dataclasses import dataclass, fields, replace
-from math import exp, isfinite
+from math import exp, isfinite, sqrt
 from typing import Iterable
 
 __all__ = [
@@ -94,12 +94,13 @@ class ASWSizingInputs:
     loiter_thrust_specific_fuel_consumption_lb_per_hr_per_lb: float = 0.4
     wing_aspect_ratio: float = 7.0
     wetted_area_ratio_s_wet_over_s_ref: float = 5.5
-    lift_to_drag_max: float = 16.0
+    lift_to_drag_max_k_factor: float = 14.0
     cruise_lift_to_drag_factor: float = 0.866
     reserve_fuel_fraction: float = 0.05
     trapped_unusable_fuel_fraction: float = 0.01
     empty_weight_fraction_coefficient: float = 0.93
     empty_weight_fraction_exponent: float = -0.07
+    structure_material: str = "metal"
 
     def __post_init__(self) -> None:
         _require_positive("cruise_range_one_way_nm", self.cruise_range_one_way_nm, "nm")
@@ -140,7 +141,9 @@ class ASWSizingInputs:
             self.wetted_area_ratio_s_wet_over_s_ref,
             "unitless",
         )
-        _require_positive("lift_to_drag_max", self.lift_to_drag_max, "unitless")
+        _require_positive(
+            "lift_to_drag_max_k_factor", self.lift_to_drag_max_k_factor, "unitless"
+        )
         _require_fraction_zero_to_one("cruise_lift_to_drag_factor", self.cruise_lift_to_drag_factor)
         _require_nonnegative("reserve_fuel_fraction", self.reserve_fuel_fraction, "unitless")
         _require_nonnegative(
@@ -150,6 +153,11 @@ class ASWSizingInputs:
             "empty_weight_fraction_coefficient", self.empty_weight_fraction_coefficient, "unitless"
         )
         _as_real("empty_weight_fraction_exponent", self.empty_weight_fraction_exponent)
+        if self.structure_material not in ("metal", "composite"):
+            raise ValueError(
+                "structure_material must be 'metal' or 'composite'; "
+                f"received {self.structure_material!r}."
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -182,6 +190,7 @@ class DerivedCruiseAerodynamicQuantities:
     cruise_thrust_specific_fuel_consumption_lb_per_s_per_lb: float
     loiter_thrust_specific_fuel_consumption_lb_per_s_per_lb: float
     wetted_aspect_ratio: float
+    lift_to_drag_max: float
     cruise_lift_to_drag: float
     loiter_lift_to_drag: float
 
@@ -269,6 +278,9 @@ def derive_cruise_aerodynamic_quantities(
 ) -> DerivedCruiseAerodynamicQuantities:
     """Convert visible inputs into the cruise and aerodynamic quantities used by the solver."""
 
+    wetted_aspect_ratio = inputs.wing_aspect_ratio / inputs.wetted_area_ratio_s_wet_over_s_ref
+    # Raymer 7e Eq. 3.12 / Fig. 3.5: (L/D)max = K_LD * sqrt(wetted aspect ratio).
+    lift_to_drag_max = inputs.lift_to_drag_max_k_factor * sqrt(wetted_aspect_ratio)
     return DerivedCruiseAerodynamicQuantities(
         fixed_weight_lb=inputs.mission_equipment_weight_lb + inputs.crew_weight_lb,
         cruise_range_one_way_ft=inputs.cruise_range_one_way_nm * _FEET_PER_NAUTICAL_MILE,
@@ -281,9 +293,10 @@ def derive_cruise_aerodynamic_quantities(
         loiter_thrust_specific_fuel_consumption_lb_per_s_per_lb=(
             inputs.loiter_thrust_specific_fuel_consumption_lb_per_hr_per_lb / _SECONDS_PER_HOUR
         ),
-        wetted_aspect_ratio=inputs.wing_aspect_ratio / inputs.wetted_area_ratio_s_wet_over_s_ref,
-        cruise_lift_to_drag=inputs.cruise_lift_to_drag_factor * inputs.lift_to_drag_max,
-        loiter_lift_to_drag=inputs.lift_to_drag_max,
+        wetted_aspect_ratio=wetted_aspect_ratio,
+        lift_to_drag_max=lift_to_drag_max,
+        cruise_lift_to_drag=inputs.cruise_lift_to_drag_factor * lift_to_drag_max,
+        loiter_lift_to_drag=lift_to_drag_max,
     )
 
 
@@ -410,9 +423,12 @@ def compute_empty_weight_fraction(
     takeoff_gross_weight_lb = _require_positive(
         "takeoff_gross_weight_lb", takeoff_gross_weight_lb, "lb"
     )
+    # Raymer: composite construction trims the empty-weight fraction by ~5%.
+    material_factor = 0.95 if inputs.structure_material == "composite" else 1.0
     empty_weight_fraction = (
         inputs.empty_weight_fraction_coefficient
         * takeoff_gross_weight_lb ** inputs.empty_weight_fraction_exponent
+        * material_factor
     )
     if not 0.0 < empty_weight_fraction < 1.0:
         raise ValueError(
