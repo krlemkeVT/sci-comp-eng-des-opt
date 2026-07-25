@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sci-comp-eng-des-opt-aircraft-sizing"
+version = "0.1.0"
+description = "Aircraft sizing course examples for Scientific Computing Methods for Engineering Design Optimization."
+readme = "README.md"
+requires-python = ">=3.10,<3.14"
+dependencies = [
+    "matplotlib",
+    "pyXDSM",
+    "streamlit",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+aircraft_sizing = [
+    "examples/**/*.md",
+    "examples/**/*.pdf",
+    "examples/**/*.png",
+    "examples/**/*.pptx",
+    "examples/**/*.tex",
+    "examples/**/*.tikz",
+]
