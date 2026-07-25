@@ -29,3 +29,13 @@
 .github/skills/tiered-memory/
 .github/workflows/squad-*.yml
 .github/workflows/sync-squad-labels.yml
+__pycache__/
+
+# Python packaging / build artifacts
+build/
+dist/
+*.egg-info/
+
+# Jupyter / editor local state
+.ipynb_checkpoints/
+.vscode/
