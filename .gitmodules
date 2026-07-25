@@ -1,0 +1,3 @@
+[submodule "references/ElectricAircraftDesignExample_AIAA2026"]
+	path = references/ElectricAircraftDesignExample_AIAA2026
+	url = https://github.com/EAT-AD-TC/ElectricAircraftDesignExample_AIAA2026.git
