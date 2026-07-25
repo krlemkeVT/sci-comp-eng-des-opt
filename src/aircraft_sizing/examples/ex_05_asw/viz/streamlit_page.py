@@ -85,42 +85,22 @@ def _make_baseline_page_state() -> _PageState:
     )
 
 
+# Only the inputs students actually drive are widgets. Everything else (cruise
+# Mach, altitude, speed of sound, crew weight, prelanding loiter, the historical
+# segment ratios, K_LD, the L/D factors, and the fuel/empty-weight allowances)
+# stays fixed at the Raymer 3.6 baseline defined in the kernel.
 _INPUT_GROUPS: tuple[tuple[str, tuple[_FieldSpec, ...]], ...] = (
     (
-        "Mission / crew",
+        "Mission",
         (
             _FieldSpec("cruise_range_one_way_nm", "One-way cruise range", "nm", 25.0, 1e-6, slider_min=500.0, slider_max=3_000.0),
-            _FieldSpec("cruise_mach_number", "Cruise Mach number", "Mach", 0.01, 1e-6, slider_min=0.30, slider_max=0.90),
-            _FieldSpec("cruise_altitude_ft", "Cruise altitude", "ft", 1_000.0, 0.0, slider_min=0.0, slider_max=45_000.0),
-            _FieldSpec(
-                "speed_of_sound_at_cruise_altitude_ft_per_s",
-                "Speed of sound at cruise altitude",
-                "ft/s",
-                0.1,
-                1e-6,
-                slider_min=900.0,
-                slider_max=1_150.0,
-            ),
             _FieldSpec("mission_equipment_weight_lb", "Mission equipment weight", "lb", 250.0, 0.0, slider_min=0.0, slider_max=30_000.0),
-            _FieldSpec("crew_weight_lb", "Crew weight", "lb", 25.0, 0.0, slider_min=0.0, slider_max=2_000.0),
             _FieldSpec("loiter_on_station_endurance_hr", "On-station loiter endurance", "hr", 0.1, 1e-6, slider_min=0.5, slider_max=10.0),
-            _FieldSpec(
-                "loiter_prelanding_endurance_min",
-                "Prelanding loiter endurance",
-                "min",
-                1.0,
-                1e-6,
-                slider_min=1.0,
-                slider_max=60.0,
-            ),
         ),
     ),
     (
-        "Segment / propulsion",
+        "Propulsion",
         (
-            _FieldSpec("warmup_takeoff_weight_ratio", "Warmup/takeoff weight ratio", "fraction", 0.001, 1e-6, 1.0),
-            _FieldSpec("climb_weight_ratio", "Climb weight ratio", "fraction", 0.001, 1e-6, 1.0),
-            _FieldSpec("landing_weight_ratio", "Landing weight ratio", "fraction", 0.001, 1e-6, 1.0),
             _FieldSpec(
                 "cruise_thrust_specific_fuel_consumption_lb_per_hr_per_lb",
                 "Cruise TSFC",
@@ -138,7 +118,7 @@ _INPUT_GROUPS: tuple[tuple[str, tuple[_FieldSpec, ...]], ...] = (
         ),
     ),
     (
-        "Aerodynamics / allowances",
+        "Aerodynamics",
         (
             _FieldSpec("wing_aspect_ratio", "Wing aspect ratio", "unitless", 0.1, 1e-6),
             _FieldSpec(
@@ -147,23 +127,6 @@ _INPUT_GROUPS: tuple[tuple[str, tuple[_FieldSpec, ...]], ...] = (
                 "unitless",
                 0.1,
                 1e-6,
-            ),
-            _FieldSpec("lift_to_drag_max", "Maximum L/D", "unitless", 0.1, 1e-6),
-            _FieldSpec("cruise_lift_to_drag_factor", "Cruise L/D factor", "fraction", 0.001, 1e-6, 1.0),
-            _FieldSpec("reserve_fuel_fraction", "Reserve fuel fraction", "fraction", 0.005, 0.0),
-            _FieldSpec("trapped_unusable_fuel_fraction", "Trapped/unusable fuel fraction", "fraction", 0.005, 0.0),
-            _FieldSpec(
-                "empty_weight_fraction_coefficient",
-                "Empty-weight fraction coefficient",
-                "unitless",
-                0.01,
-                1e-6,
-            ),
-            _FieldSpec(
-                "empty_weight_fraction_exponent",
-                "Empty-weight fraction exponent",
-                "unitless",
-                0.005,
             ),
         ),
     ),
@@ -174,6 +137,17 @@ _INPUT_SPECS = {
     for _, group_specs in _INPUT_GROUPS
     for field_spec in group_specs
 }
+
+# The one-at-a-time sweep is restricted to the four most instructive inputs.
+_SWEEP_INPUT_NAMES: tuple[str, ...] = (
+    "cruise_range_one_way_nm",
+    "mission_equipment_weight_lb",
+    "wing_aspect_ratio",
+    "cruise_thrust_specific_fuel_consumption_lb_per_hr_per_lb",
+)
+
+_MATERIAL_KEY = "structure_material"
+_MATERIAL_OPTIONS: tuple[str, ...] = ("metal", "composite")
 
 _SETTING_SPECS: tuple[_FieldSpec, ...] = (
     _FieldSpec("initial_takeoff_gross_weight_guess_lb", "Initial TOGW guess", "lb", 500.0, 1e-6),
@@ -212,6 +186,7 @@ def _field_label(field_spec: _FieldSpec) -> str:
 def _set_form_state(state: _PageState) -> None:
     for field_spec in _INPUT_SPECS.values():
         st.session_state[_widget_key(field_spec.name)] = float(getattr(state.inputs, field_spec.name))
+    st.session_state[_widget_key(_MATERIAL_KEY)] = state.inputs.structure_material
     st.session_state[_widget_key("initial_takeoff_gross_weight_guess_lb")] = float(
         state.settings.initial_takeoff_gross_weight_guess_lb
     )
@@ -227,11 +202,16 @@ def _set_form_state(state: _PageState) -> None:
 
 
 def _read_form_state() -> _PageState:
-    inputs = ASWSizingInputs(
-        **{
-            field_name: float(st.session_state[_widget_key(field_name)])
-            for field_name in _INPUT_SPECS
-        }
+    # Start from the fixed Raymer 3.6 baseline and override only the widget-backed
+    # inputs plus the material choice; every other assumption stays at its default.
+    widget_values = {
+        field_name: float(st.session_state[_widget_key(field_name)])
+        for field_name in _INPUT_SPECS
+    }
+    inputs = replace(
+        make_baseline_asw_sizing_inputs(),
+        structure_material=str(st.session_state[_widget_key(_MATERIAL_KEY)]),
+        **widget_values,
     )
     settings = FixedPointIterationSettings(
         initial_takeoff_gross_weight_guess_lb=float(
@@ -505,6 +485,11 @@ def _derived_rows(solution: ASWSizingSolution) -> list[dict[str, str]]:
             "Units": "unitless",
         },
         {
+            "Quantity": "(L/D)max = K_LD·√(AR_wet)",
+            "Value": _format_fraction(solution.derived_quantities.lift_to_drag_max),
+            "Units": "unitless",
+        },
+        {
             "Quantity": "Cruise L/D",
             "Value": _format_fraction(solution.derived_quantities.cruise_lift_to_drag),
             "Units": "unitless",
@@ -546,6 +531,7 @@ def _final_breakdown_rows(solution: ASWSizingSolution) -> list[dict[str, str]]:
         {"Quantity": "Fuel weight", "Value": _format_number(fuel_weight_lb, 1), "Units": "lb"},
         {"Quantity": "Final empty weight", "Value": _format_number(solution.final_empty_weight_lb, 1), "Units": "lb"},
         {"Quantity": "Final empty-weight fraction", "Value": _format_fraction(solution.final_empty_weight_fraction_we_over_wto), "Units": "fraction"},
+        {"Quantity": "Structure material", "Value": solution.inputs.structure_material.capitalize(), "Units": "-"},
         {"Quantity": "Converged iterations", "Value": str(solution.iteration_count), "Units": "count"},
     ]
 
@@ -701,6 +687,16 @@ def _render_sidebar() -> None:
                                 format=_format_from_step(field_spec.step),
                             )
 
+            with st.expander("Structure", expanded=True):
+                st.radio(
+                    "Structure material",
+                    key=_widget_key(_MATERIAL_KEY),
+                    options=list(_MATERIAL_OPTIONS),
+                    format_func=str.capitalize,
+                    horizontal=True,
+                    help="Composite construction scales the empty-weight fraction by 0.95 (Raymer).",
+                )
+
             with st.expander("Solver controls", expanded=True):
                 for field_spec in _SETTING_SPECS:
                     st.number_input(
@@ -720,7 +716,7 @@ def _render_sidebar() -> None:
                 st.selectbox(
                     "Sweep input",
                     key=_widget_key("sensitivity_input_name"),
-                    options=list(_INPUT_SPECS),
+                    options=list(_SWEEP_INPUT_NAMES),
                     format_func=lambda name: _field_label(_INPUT_SPECS[name]),
                 )
                 st.slider(

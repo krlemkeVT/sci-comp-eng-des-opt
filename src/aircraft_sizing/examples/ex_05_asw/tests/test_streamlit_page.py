@@ -209,6 +209,23 @@ class StreamlitPageAppTestTests(unittest.TestCase):
             baseline_solution.final_takeoff_gross_weight_lb,
         )
 
+    def test_material_radio_switches_to_composite(self) -> None:
+        baseline_solution = self.app.session_state[page_module._LAST_SOLUTION_KEY]
+        material_key = page_module._widget_key(page_module._MATERIAL_KEY)
+
+        self.app.radio(material_key).set_value("composite")
+        self._click_button("Recompute")
+
+        applied_state = self.app.session_state[page_module._APPLIED_STATE_KEY]
+        recomputed_solution = self.app.session_state[page_module._LAST_SOLUTION_KEY]
+
+        self.assertEqual(applied_state.inputs.structure_material, "composite")
+        # Composite trims the empty-weight fraction, so the sized aircraft is lighter.
+        self.assertLess(
+            recomputed_solution.final_takeoff_gross_weight_lb,
+            baseline_solution.final_takeoff_gross_weight_lb,
+        )
+
     def test_reset_button_restores_baseline_controls_and_recomputes(self) -> None:
         baseline_state = page_module._make_baseline_page_state()
 
