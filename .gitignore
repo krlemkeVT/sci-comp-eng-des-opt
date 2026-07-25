@@ -36,6 +36,10 @@ build/
 dist/
 *.egg-info/
 
+# OpenMDAO per-problem reports / output directories
+*_out/
+reports/
+
 # Jupyter / editor local state
 .ipynb_checkpoints/
 .vscode/

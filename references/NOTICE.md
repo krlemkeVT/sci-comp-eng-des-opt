@@ -10,7 +10,7 @@
 - **Provenance:** A non-profit initiative of the AIAA Electrified Aircraft Technologies (EAT)
   and Aircraft Design (AD) Technical Committees. © 2026 the paper's authors.
 - **Why it's here:** Referenced by
-  [`ex_06_electrified_aircraft_sizing.md`](../src/aircraft_sizing/examples/ex_06_e19_hybrid_electric/docs/ex_06_electrified_aircraft_sizing.md)
+  [`ex_05_electrified_aircraft_sizing.md`](../src/aircraft_sizing/examples/ex_05_e19_hybrid_electric/docs/ex_05_electrified_aircraft_sizing.md)
   for equation-to-code cross-references and to let students run the E-19 worked example.
 
 ### How it is included

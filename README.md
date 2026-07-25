@@ -18,7 +18,7 @@ git clone https://github.com/<your-account>/sci-comp-eng-des-opt.git
 cd sci-comp-eng-des-opt
 ```
 
-The E-19 electrified-aircraft example (ex_06) references a companion repository tracked as a git submodule. It is **not** required to run the ASW app, but if you want it, fetch it once with:
+The E-19 electrified-aircraft example (ex_05) references a companion repository tracked as a git submodule. It is **not** required to run the ASW app, but if you want it, fetch it once with:
 
 ```bash
 git submodule update --init references/ElectricAircraftDesignExample_AIAA2026
@@ -106,15 +106,20 @@ python -m pip install -e .
 
 ### Example narratives
 
-- [Range equation worked example](src/aircraft_sizing/examples/ex_01_range/docs/ex_01_range_calculation.md)
-- [Reference-airplane worked example](src/aircraft_sizing/examples/ex_02_reference_airplane/docs/ex_02_reference_airplane.md)
-- [Electric drive train SOA energy example](src/aircraft_sizing/examples/ex_03_edt_soa/docs/ex_03_edt_soa_example.md)
-- [ASW fixed-point sizing narrative](src/aircraft_sizing/examples/ex_05_asw/docs/ex_05_asw_sizing.md)
-- [Electrified aircraft (E-19) sizing narrative](src/aircraft_sizing/examples/ex_06_e19_hybrid_electric/docs/ex_06_electrified_aircraft_sizing.md)
+- [ASW fixed-point sizing narrative](src/aircraft_sizing/examples/ex_01_asw/docs/ex_01_asw_sizing.md)
+- [Range equation worked example](src/aircraft_sizing/examples/ex_02_range/docs/ex_02_range_calculation.md)
+- [Reference-airplane worked example](src/aircraft_sizing/examples/ex_03_reference_airplane/docs/ex_03_reference_airplane.md)
+- [Electric drive train SOA energy example](src/aircraft_sizing/examples/ex_04_edt_soa/docs/ex_04_edt_soa_example.md)
+- [Electrified aircraft (E-19) sizing narrative](src/aircraft_sizing/examples/ex_05_e19_hybrid_electric/docs/ex_05_electrified_aircraft_sizing.md)
+
+### Course lessons
+
+- [Lesson 1 — Design Structure Matrices (DSM), N2, and XDSM](lessons/lesson_01_dsm/docs/lesson_01_dsm.md)
+- [Lesson 2 — Iterative methods: fixed-point vs Newton vs Broyden, gradients vs finite difference](lessons/lesson_02_iterative_methods/docs/lesson_02_iterative_methods.md)
 
 ### Reference notes
 
-- [Electrified-aircraft equations](src/aircraft_sizing/examples/ex_01_range/docs/electrified_aircraft_equations.md)
+- [Electrified-aircraft equations](src/aircraft_sizing/examples/ex_02_range/docs/electrified_aircraft_equations.md)
 
 ## Deploying to Streamlit Community Cloud
 

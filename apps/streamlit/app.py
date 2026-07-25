@@ -11,6 +11,6 @@ SRC_ROOT = REPO_ROOT / "src"
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
-from aircraft_sizing.examples.ex_05_asw.viz.streamlit_page import render
+from aircraft_sizing.examples.ex_01_asw.viz.streamlit_page import render
 
 render()

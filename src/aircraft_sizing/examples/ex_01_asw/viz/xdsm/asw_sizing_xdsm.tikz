@@ -1,0 +1,139 @@
+
+%%% Preamble Requirements %%%
+% \usepackage{geometry}
+% \usepackage{amsfonts}
+% \usepackage{amsmath}
+% \usepackage{amssymb}
+% \usepackage{tikz}
+
+% Optional packages such as sfmath set through python interface
+% \usepackage{}
+
+% \usetikzlibrary{arrows,chains,positioning,scopes,shapes.geometric,shapes.misc,shadows}
+
+%%% End Preamble Requirements %%%
+
+\input{"C:/Users/darsh/miniconda3/envs/aircraft-sizing/Lib/site-packages/pyxdsm/diagram_styles"}
+\begin{tikzpicture}
+
+\matrix[MatrixSetup]{
+%Row 0
+\node [DataIO] (output_aero) {$AR,\ S_{wet}/S_{ref}$};&
+\node [DataIO] (output_prop) {$M,\ a,\ \mathrm{sfc}$};&
+\node [DataIO] (output_mission) {$R,\ E$};&
+\node [DataIO] (output_solver) {$\begin{array}{c}W_{TO}^{(0)} \\ \varepsilon_{\text{conv}}\end{array}$};&
+&
+\node [DataIO] (output_sizing) {$W_{\text{fixed}}$};&
+&
+\\
+%Row 1
+\node [Function] (aero) {$\begin{array}{c}\text{Aerodynamics}\end{array}$};&
+&
+\node [DataInter] (aero-mission) {$L/D$};&
+&
+&
+&
+&
+\\
+%Row 2
+&
+\node [Function] (prop) {$\begin{array}{c}\text{Propulsion}\end{array}$};&
+\node [DataInter] (prop-mission) {$V,\ \mathrm{sfc}$};&
+&
+&
+&
+&
+\\
+%Row 3
+&
+&
+\node [Function] (mission) {$\begin{array}{c}\text{Mission fuel}\end{array}$};&
+&
+&
+\node [DataInter] (mission-sizing) {$W_f / W_{TO}$};&
+&
+\\
+%Row 4
+&
+&
+&
+\node [MDA] (solver) {$\begin{array}{c}\text{Nonlinear} \\ \text{solver}\end{array}$};&
+\node [DataInter] (solver-struct) {$W_{TO}^{(k)}$};&
+&
+&
+\node [DataIO] (right_output_solver) {$W_{TO}^{*}$};\\
+%Row 5
+&
+&
+&
+&
+\node [Function] (struct) {$\begin{array}{c}\text{Structures}\end{array}$};&
+\node [DataInter] (struct-sizing) {$W_e / W_{TO}$};&
+&
+\\
+%Row 6
+&
+&
+&
+\node [DataInter] (sizing-solver) {$\mathcal{R}(W_{TO})$};&
+&
+\node [Function] (sizing) {$\begin{array}{c}\text{Sizing} \\ \text{residual}\end{array}$};&
+&
+\\
+%Row 7
+&
+&
+&
+&
+&
+&
+&
+\\
+};
+
+% XDSM process chains
+{ [start chain=process]
+ \begin{pgfonlayer}{process} 
+\chainin (aero);
+\chainin (mission) [join=by ProcessHVA];
+\chainin (sizing) [join=by ProcessHVA];
+\end{pgfonlayer}
+}{ [start chain=process]
+ \begin{pgfonlayer}{process} 
+\chainin (prop);
+\chainin (mission) [join=by ProcessHVA];
+\end{pgfonlayer}
+}{ [start chain=process]
+ \begin{pgfonlayer}{process} 
+\chainin (solver);
+\chainin (struct) [join=by ProcessHVA];
+\chainin (sizing) [join=by ProcessHVA];
+\chainin (solver) [join=by ProcessHVA];
+\end{pgfonlayer}
+}
+
+\begin{pgfonlayer}{data}
+\path
+% Horizontal edges
+(aero) edge [DataLine] (aero-mission)
+(prop) edge [DataLine] (prop-mission)
+(mission) edge [DataLine] (mission-sizing)
+(solver) edge [DataLine] (solver-struct)
+(struct) edge [DataLine] (struct-sizing)
+(sizing) edge [DataLine] (sizing-solver)
+(solver) edge [DataLine] (right_output_solver)
+% Vertical edges
+(aero-mission) edge [DataLine] (mission)
+(prop-mission) edge [DataLine] (mission)
+(mission-sizing) edge [DataLine] (sizing)
+(solver-struct) edge [DataLine] (struct)
+(struct-sizing) edge [DataLine] (sizing)
+(sizing-solver) edge [DataLine] (solver)
+(aero) edge [DataLine] (output_aero)
+(prop) edge [DataLine] (output_prop)
+(mission) edge [DataLine] (output_mission)
+(solver) edge [DataLine] (output_solver)
+(sizing) edge [DataLine] (output_sizing);
+\end{pgfonlayer}
+
+\end{tikzpicture}
