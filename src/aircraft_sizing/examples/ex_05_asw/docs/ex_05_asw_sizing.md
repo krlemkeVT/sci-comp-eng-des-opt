@@ -182,7 +182,7 @@ The Streamlit app mirrors the same sequence as the hand calculation, then adds a
 
 ### Controls students can vary
 
-- **Mission and crew:** one-way cruise range, cruise Mach number, cruise altitude, speed of sound at altitude, mission-equipment weight, crew weight, on-station loiter endurance, and prelanding loiter endurance.
+- **Mission and crew (sliders):** one-way cruise range, cruise Mach number, cruise altitude, speed of sound at altitude, mission-equipment weight, crew weight, on-station loiter endurance, and prelanding loiter endurance — dragged directly on slider bars.
 - **Segment constants and propulsion:** warmup/takeoff, climb, and landing weight ratios plus cruise and loiter TSFC values.
 - **Aerodynamics and allowances:** wing aspect ratio, wetted-area ratio, maximum $L/D$, cruise $L/D$ factor, reserve fuel fraction, trapped/unusable fuel fraction, and the empty-weight regression coefficient/exponent.
 - **Solver controls:** initial TOGW guess, convergence tolerance, and maximum iterations.

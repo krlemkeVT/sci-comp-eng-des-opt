@@ -189,6 +189,26 @@ class StreamlitPageAppTestTests(unittest.TestCase):
             places=6,
         )
 
+    def test_recompute_button_applies_mission_parameter_slider(self) -> None:
+        baseline_solution = self.app.session_state[page_module._LAST_SOLUTION_KEY]
+        range_key = page_module._widget_key("cruise_range_one_way_nm")
+
+        # The mission parameters render as sliders; dragging one and recomputing
+        # must flow through to the applied inputs and the solved weight.
+        self.app.slider(range_key).set_value(1_800.0)
+        self._click_button("Recompute")
+
+        applied_state = self.app.session_state[page_module._APPLIED_STATE_KEY]
+        recomputed_solution = self.app.session_state[page_module._LAST_SOLUTION_KEY]
+
+        self.assertEqual(applied_state.inputs.cruise_range_one_way_nm, 1_800.0)
+        self.assertEqual(self.app.session_state[range_key], 1_800.0)
+        # A longer cruise burns more fuel, so the sized aircraft gets heavier.
+        self.assertGreater(
+            recomputed_solution.final_takeoff_gross_weight_lb,
+            baseline_solution.final_takeoff_gross_weight_lb,
+        )
+
     def test_reset_button_restores_baseline_controls_and_recomputes(self) -> None:
         baseline_state = page_module._make_baseline_page_state()
 

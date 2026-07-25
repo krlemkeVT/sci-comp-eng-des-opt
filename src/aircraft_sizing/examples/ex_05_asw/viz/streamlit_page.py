@@ -39,6 +39,14 @@ class _FieldSpec:
     step: float
     sensitivity_min: float | None = None
     sensitivity_max: float | None = None
+    slider_min: float | None = None
+    slider_max: float | None = None
+
+    @property
+    def is_slider(self) -> bool:
+        """Render as a slider when an explicit min/max range is provided."""
+
+        return self.slider_min is not None and self.slider_max is not None
 
 
 @dataclass(frozen=True, slots=True)
@@ -81,25 +89,29 @@ _INPUT_GROUPS: tuple[tuple[str, tuple[_FieldSpec, ...]], ...] = (
     (
         "Mission / crew",
         (
-            _FieldSpec("cruise_range_one_way_nm", "One-way cruise range", "nm", 25.0, 1e-6),
-            _FieldSpec("cruise_mach_number", "Cruise Mach number", "Mach", 0.01, 1e-6),
-            _FieldSpec("cruise_altitude_ft", "Cruise altitude", "ft", 1_000.0, 0.0),
+            _FieldSpec("cruise_range_one_way_nm", "One-way cruise range", "nm", 25.0, 1e-6, slider_min=500.0, slider_max=3_000.0),
+            _FieldSpec("cruise_mach_number", "Cruise Mach number", "Mach", 0.01, 1e-6, slider_min=0.30, slider_max=0.90),
+            _FieldSpec("cruise_altitude_ft", "Cruise altitude", "ft", 1_000.0, 0.0, slider_min=0.0, slider_max=45_000.0),
             _FieldSpec(
                 "speed_of_sound_at_cruise_altitude_ft_per_s",
                 "Speed of sound at cruise altitude",
                 "ft/s",
-                1.0,
+                0.1,
                 1e-6,
+                slider_min=900.0,
+                slider_max=1_150.0,
             ),
-            _FieldSpec("mission_equipment_weight_lb", "Mission equipment weight", "lb", 250.0, 0.0),
-            _FieldSpec("crew_weight_lb", "Crew weight", "lb", 25.0, 0.0),
-            _FieldSpec("loiter_on_station_endurance_hr", "On-station loiter endurance", "hr", 0.1, 1e-6),
+            _FieldSpec("mission_equipment_weight_lb", "Mission equipment weight", "lb", 250.0, 0.0, slider_min=0.0, slider_max=30_000.0),
+            _FieldSpec("crew_weight_lb", "Crew weight", "lb", 25.0, 0.0, slider_min=0.0, slider_max=2_000.0),
+            _FieldSpec("loiter_on_station_endurance_hr", "On-station loiter endurance", "hr", 0.1, 1e-6, slider_min=0.5, slider_max=10.0),
             _FieldSpec(
                 "loiter_prelanding_endurance_min",
                 "Prelanding loiter endurance",
                 "min",
                 1.0,
                 1e-6,
+                slider_min=1.0,
+                slider_max=60.0,
             ),
         ),
     ),
@@ -672,12 +684,22 @@ def _render_sidebar() -> None:
             for title, field_specs in _INPUT_GROUPS:
                 with st.expander(title, expanded=True):
                     for field_spec in field_specs:
-                        st.number_input(
-                            _field_label(field_spec),
-                            key=_widget_key(field_spec.name),
-                            step=field_spec.step,
-                            format=_format_from_step(field_spec.step),
-                        )
+                        if field_spec.is_slider:
+                            st.slider(
+                                _field_label(field_spec),
+                                key=_widget_key(field_spec.name),
+                                min_value=float(field_spec.slider_min),
+                                max_value=float(field_spec.slider_max),
+                                step=field_spec.step,
+                                format=_format_from_step(field_spec.step),
+                            )
+                        else:
+                            st.number_input(
+                                _field_label(field_spec),
+                                key=_widget_key(field_spec.name),
+                                step=field_spec.step,
+                                format=_format_from_step(field_spec.step),
+                            )
 
             with st.expander("Solver controls", expanded=True):
                 for field_spec in _SETTING_SPECS:
