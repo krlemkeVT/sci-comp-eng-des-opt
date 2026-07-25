@@ -34,24 +34,15 @@ From the repository root:
 conda env create -f environment.yml --yes
 ```
 
-`environment.yml` creates an environment named **`aircraft-sizing`** (Python 3.12) and installs this package in editable mode (`-e .`), so the environment picks up local source edits automatically.
+`environment.yml` creates an environment named **`eng-des-opt-course`** (Python 3.12) and installs this package in editable mode (`-e .`), so the environment picks up local source edits automatically.
 
-On Windows, if global Conda Terms-of-Service or libmamba configuration blocks the normal command, use this verified PowerShell fallback:
 
-```powershell
-$env:CONDA_NO_PLUGINS='true'; conda env create -f environment.yml --yes --solver classic; Remove-Item Env:CONDA_NO_PLUGINS -ErrorAction SilentlyContinue
 ```
 
 ### 3. Activate the environment
 
 ```bash
 conda activate aircraft-sizing
-```
-
-The package is already installed (step 2). To confirm:
-
-```bash
-python -c "import aircraft_sizing; print('ok')"
 ```
 
 ### 4. Launch the Streamlit app

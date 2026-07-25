@@ -3,7 +3,7 @@ requires = ["setuptools>=69", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "sci-comp-eng-des-opt-aircraft-sizing"
+name = "sci-comp-eng-des-opt"
 version = "0.1.0"
 description = "Aircraft sizing course examples for Scientific Computing Methods for Engineering Design Optimization."
 readme = "README.md"

@@ -1,4 +1,4 @@
-name: aircraft-sizing
+name: eng-des-opt-course
 channels:
   - conda-forge
   - nodefaults
