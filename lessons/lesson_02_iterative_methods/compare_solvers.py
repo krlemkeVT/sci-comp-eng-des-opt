@@ -1,6 +1,6 @@
 """Lesson 2: compare nonlinear solvers and derivative methods on the ASW loop.
 
-Run from the repository root (with the ``aircraft-sizing`` environment active)::
+Run from the repository root (with the ``eng-des-opt-course`` environment active)::
 
     python lessons/lesson_02_iterative_methods/compare_solvers.py
 

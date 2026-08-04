@@ -1,6 +1,6 @@
 """Lesson 1: generate the OpenMDAO N2 diagram for the ASW sizing model.
 
-Run from the repository root (with the ``aircraft-sizing`` environment active)::
+Run from the repository root (with the ``eng-des-opt-course`` environment active)::
 
     python lessons/lesson_01_dsm/generate_n2.py
 

@@ -6,7 +6,7 @@ where the coupled loops are. We use the ASW conceptual-sizing model
 (`aircraft_sizing.examples.ex_01_asw`) as the running example and generate two
 views of it: OpenMDAO's automatic **N2** and a hand-authored **XDSM**.
 
-Prerequisites: the `aircraft-sizing` conda environment (installs OpenMDAO, JAX,
+Prerequisites: the `eng-des-opt-course` conda environment (installs OpenMDAO, JAX,
 pyXDSM). Rendering the XDSM to PNG/PDF also needs `pdflatex` and `pdftoppm` on PATH.
 
 ---

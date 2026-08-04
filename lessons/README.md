@@ -6,8 +6,8 @@ conceptual-sizing example in
 [`src/aircraft_sizing/examples/ex_01_asw`](../src/aircraft_sizing/examples/ex_01_asw) —
 so the ideas build on one concrete artifact instead of a new toy each time.
 
-Run all commands from the repository root with the `aircraft-sizing` environment
-active (`conda activate aircraft-sizing`; see the top-level [README](../README.md)).
+Run all commands from the repository root with the `eng-des-opt-course` environment
+active (`conda activate eng-des-opt-course`; see the top-level [README](../README.md)).
 
 ## Lessons
 

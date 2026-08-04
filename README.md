@@ -1,6 +1,6 @@
 # Scientific Computing Methods for Engineering Design Optimization
 
-This repository collects worked examples, reference notes, and interactive aircraft-sizing materials for the course. It ships an installable Python package, `sci-comp-eng-des-opt-aircraft-sizing` (defined in `pyproject.toml`), plus a Streamlit app for the ASW (Anti-Submarine Warfare) fixed-point sizing example.
+This repository collects worked examples, reference notes, and interactive aircraft-sizing materials for the course. It ships an installable Python package, `sci-comp-eng-des-opt` (defined in `pyproject.toml`), plus a Streamlit app for the ASW (Anti-Submarine Warfare) fixed-point sizing example.
 
 ## Quickstart: run the ASW Streamlit example
 
@@ -18,7 +18,7 @@ git clone https://github.com/<your-account>/sci-comp-eng-des-opt.git
 cd sci-comp-eng-des-opt
 ```
 
-The E-19 electrified-aircraft example (ex_05) references a companion repository tracked as a git submodule. It is **not** required to run the ASW app, but if you want it, fetch it once with:
+The E-19 electrified-aircraft example (ex_03) references a companion repository tracked as a git submodule. It is **not** required to run the ASW app, but if you want it, fetch it once with:
 
 ```bash
 git submodule update --init references/ElectricAircraftDesignExample_AIAA2026
@@ -36,13 +36,10 @@ conda env create -f environment.yml --yes
 
 `environment.yml` creates an environment named **`eng-des-opt-course`** (Python 3.12) and installs this package in editable mode (`-e .`), so the environment picks up local source edits automatically.
 
-
-```
-
 ### 3. Activate the environment
 
 ```bash
-conda activate aircraft-sizing
+conda activate eng-des-opt-course
 ```
 
 ### 4. Launch the Streamlit app
@@ -97,11 +94,13 @@ python -m pip install -e .
 
 ### Example narratives
 
-- [ASW fixed-point sizing narrative](src/aircraft_sizing/examples/ex_01_asw/docs/ex_01_asw_sizing.md)
-- [Range equation worked example](src/aircraft_sizing/examples/ex_02_range/docs/ex_02_range_calculation.md)
-- [Reference-airplane worked example](src/aircraft_sizing/examples/ex_03_reference_airplane/docs/ex_03_reference_airplane.md)
-- [Electric drive train SOA energy example](src/aircraft_sizing/examples/ex_04_edt_soa/docs/ex_04_edt_soa_example.md)
-- [Electrified aircraft (E-19) sizing narrative](src/aircraft_sizing/examples/ex_05_e19_hybrid_electric/docs/ex_05_electrified_aircraft_sizing.md)
+- **ex_01 —** [ASW fixed-point sizing narrative](src/aircraft_sizing/examples/ex_01_asw/docs/ex_01_asw_sizing.md) (fuel-based, from Raymer)
+- **ex_02 —** [Electrified aircraft — worked examples](src/aircraft_sizing/examples/ex_02_electrified_aircraft/docs/ex_02_electrified_aircraft.md) (AIAA Short Course), a set of isolated examples:
+  - [Range equation](src/aircraft_sizing/examples/ex_02_electrified_aircraft/docs/01_range_equation.md)
+  - [Reference airplane](src/aircraft_sizing/examples/ex_02_electrified_aircraft/docs/02_reference_airplane.md)
+  - [Electric drive train (EDT) SOA energy](src/aircraft_sizing/examples/ex_02_electrified_aircraft/docs/03_edt_soa_energy.md)
+  - [Reduced-order battery sizing](src/aircraft_sizing/examples/ex_02_electrified_aircraft/docs/04_battery_sizing.md)
+- **ex_03 —** [Electrified aircraft (E-19) sizing narrative](src/aircraft_sizing/examples/ex_03_e19_hybrid_electric/docs/ex_03_electrified_aircraft_sizing.md) (hybrid-electric, from de Vries et al., AIAA 2026-4690)
 
 ### Course lessons
 
@@ -110,7 +109,7 @@ python -m pip install -e .
 
 ### Reference notes
 
-- [Electrified-aircraft equations](src/aircraft_sizing/examples/ex_02_range/docs/electrified_aircraft_equations.md)
+- [Electrified-aircraft equations](src/aircraft_sizing/examples/ex_02_electrified_aircraft/docs/electrified_aircraft_equations.md)
 
 ## Deploying to Streamlit Community Cloud
 

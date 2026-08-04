@@ -1,6 +1,6 @@
 """Lesson 1: render the hand-authored pyXDSM diagram of the ASW model.
 
-Run from the repository root (with the ``aircraft-sizing`` environment active)::
+Run from the repository root (with the ``eng-des-opt-course`` environment active)::
 
     python lessons/lesson_01_dsm/generate_xdsm.py
 

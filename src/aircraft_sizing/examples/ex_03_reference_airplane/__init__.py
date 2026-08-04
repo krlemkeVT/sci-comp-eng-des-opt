@@ -1,1 +1,0 @@
-"""Reference-airplane worked example."""
