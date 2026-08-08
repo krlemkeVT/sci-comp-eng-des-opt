@@ -2,6 +2,75 @@
 
 This repository collects worked examples, reference notes, and interactive aircraft-sizing materials for the course. It ships an installable Python package, `sci-comp-eng-des-opt` (defined in `pyproject.toml`), plus a Streamlit app for the ASW (Anti-Submarine Warfare) fixed-point sizing example.
 
+## Course information
+
+**Term:** Fall 2026 &middot; **Format:** Graduate independent study (project-based) &middot; **Instructor:** Darshan Sarojini (<sdarshan@vt.edu>), Virginia Tech
+
+Scientific-computing methods for engineering design. The course is for graduate
+students whose research involves multidisciplinary design analysis and optimization
+(MDAO), uncertainty quantification, surrogate modeling, and computational design
+workflows. **Each student defines a project tied to their own graduate research** in
+consultation with the instructor; a sequence of assignments builds toward it. The
+objective is to formulate, implement, and evaluate a modern computational design
+study using research-relevant tools and high-performance computing.
+
+**Over the term you will:**
+
+- Formulate a design study from your own research as a formal MDO problem and
+  describe its structure with an **N2 diagram**.
+- Identify and characterize sources of **uncertainty** and technology **"k-factors"**
+  in that problem.
+- Use **agentic AI workflows** to write design-study scripts in **Google JAX** and
+  **NASA's OpenMDAO**.
+- Generate data by running MDAO scripts on **VT-ARC** high-performance computing
+  resources.
+- Fit surrogate models with **NASA's Surrogate Modeling Toolbox (SMT)**.
+- Perform uncertainty quantification on those surrogates with **UM-Bridge**, and
+  interpret the results.
+
+**Format & meetings.** Each topic is introduced in a **75-minute group lecture every
+other week**, run **hybrid** — a room on campus for in-person students and Zoom for
+those attending online. Between lectures, each student has a **one-hour individual
+meeting** with the instructor to discuss how the topic applies to their own research.
+
+**Assignments & grading.** After each topic you complete an **individual assignment**
+that applies the topic to your research, so the assignments accumulate into your final
+project. Assessment is entirely project-based: work is judged on the clarity of the
+problem formulation, appropriate use of computational methods, the correctness and
+reproducibility of scripts and workflows, the quality of the generated data and
+surrogate models, and the interpretation of the uncertainty-quantification results.
+
+**Reference text.** Joaquim R. R. A. Martins and Andrew Ning, *Engineering Design
+Optimization*, Cambridge University Press — free online at
+<https://mdobook.github.io/>. Chapter numbers in the schedule refer to this book.
+The aircraft examples in this repo follow Daniel P. Raymer, *Aircraft Design: A
+Conceptual Approach*.
+
+**Prerequisites & tools.** Working Python, plus graduate-level familiarity with
+your own research domain. The hands-on work uses this repository's
+`eng-des-opt-course` environment (OpenMDAO, JAX, Streamlit); see the
+[Quickstart](#quickstart-run-the-asw-streamlit-example) below. Additional tools
+introduced during the term: SMT, UM-Bridge, and VT-ARC HPC.
+
+## Course schedule — Fall 2026
+
+The whole group meets **every other week**, starting the **week of August 31** (no
+meeting the week of Nov 23, Thanksgiving). Most sessions cover a methods topic; two
+are reserved for presentations. The project pipeline (rightmost milestone column)
+advances in parallel, paced to build toward the final project. Intervening weeks are
+for project work, the runnable [lessons](lessons/), and individual check-ins as
+arranged. Chapter numbers refer to Martins & Ning.
+
+| # | Week of | Topic | Project milestone | Reference & repo |
+|---|---|---|---|---|
+| 1 | Aug 31 | Course kickoff; **Design Structure Matrices** — N2 and XDSM; scoping your project; tour of the worked examples | Draft **project problem statement** (objective, design variables, constraints) | Ch. 1–2, 13.2–13.3; [Lesson 1 — DSM](lessons/lesson_01_dsm/docs/lesson_01_dsm.md); [ASW app](#quickstart-run-the-asw-streamlit-example), [ex_01](src/aircraft_sizing/examples/ex_01_asw/docs/ex_01_asw_sizing.md), [ex_02](src/aircraft_sizing/examples/ex_02_electrified_aircraft/docs/ex_02_electrified_aircraft.md), [ex_03](src/aircraft_sizing/examples/ex_03_e19_hybrid_electric/docs/ex_03_electrified_aircraft_sizing.md) |
+| 2 | Sep 14 | **Iterative methods** — fixed-point (Gauss–Seidel), Newton, Broyden; convergence and cost | **N2 diagram** of your MDO problem | Ch. 3, App. B–C; [Lesson 2 — Iterative methods](lessons/lesson_02_iterative_methods/docs/lesson_02_iterative_methods.md) |
+| 3 | Sep 28 | **Gradient-based optimization & computing derivatives** — line search, BFGS, SQP; finite difference, complex step, JAX AD, adjoint | First runnable **JAX + OpenMDAO** script (agentic AI workflow) | Ch. 4–6; Lesson 2 (JAX vs finite difference) |
+| 4 | Oct 12 | **Mid-semester presentations** — project-idea pitch | **Pitch**: problem statement, N2, and planned approach (incl. uncertainty sources / k-factors) | — |
+| 5 | Oct 26 | **Surrogate-based optimization & optimization under uncertainty** — surrogate modeling with SMT; UQ with UM-Bridge; robust / reliability-based design | Design of experiments + **data set on VT-ARC HPC** | Ch. 10, 12 |
+| 6 | Nov 9 | **Gradient-free & multi-objective optimization** — Nelder–Mead, genetic algorithms, particle swarm; Pareto fronts, weighted-sum and ε-constraint | Fitted **SMT surrogate** + **UM-Bridge UQ results** | Ch. 7, 9 |
+| 7 | Dec 7 | **Final presentations** | **Final report + presentation** | — |
+
 ## Quickstart: run the ASW Streamlit example
 
 Follow these steps to create a Conda environment, install the package into it, and launch the interactive ASW app with sliders for the mission parameters.
