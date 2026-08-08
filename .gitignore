@@ -1,34 +1,3 @@
-# Squad state is local-only for this repository.
-.squad/
-# Squad: SubSquad activation file (local to this machine)
-.squad-workstream
-
-
-.gitattributes
-
-# Squad-generated task configuration is local-only.
-.github/agents/squad.agent.md
-.github/skills/agent-collaboration/
-.github/skills/coordinator-init-mode/
-.github/skills/coordinator-response-mode/
-.github/skills/coordinator-source-of-truth/
-.github/skills/cross-squad-communication/
-.github/skills/cross-squad/
-.github/skills/error-recovery/
-.github/skills/git-workflow/
-.github/skills/iterative-retrieval/
-.github/skills/reflect/
-.github/skills/reviewer-protocol/
-.github/skills/secret-handling/
-.github/skills/session-recovery/
-.github/skills/squad-conventions/
-.github/skills/squad-help/
-.github/skills/squad-version-check/
-.github/skills/squad/
-.github/skills/test-discipline/
-.github/skills/tiered-memory/
-.github/workflows/squad-*.yml
-.github/workflows/sync-squad-labels.yml
 __pycache__/
 
 # Python packaging / build artifacts
