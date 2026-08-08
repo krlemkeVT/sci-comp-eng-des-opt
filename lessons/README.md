@@ -13,10 +13,12 @@ active (`conda activate eng-des-opt-course`; see the top-level [README](../READM
 
 1. **[Design Structure Matrices (DSM), N2, and XDSM](lesson_01_dsm/docs/lesson_01_dsm.md)**
    — read a model's coupling structure; generate OpenMDAO's automatic N2 and a
-   hand-authored pyXDSM.
+   hand-authored pyXDSM, then meet the other XDSM shapes (optimizer, DOE, bi-level,
+   `stack=True`).
    ```bash
    python lessons/lesson_01_dsm/generate_n2.py     # -> outputs/asw_n2.html
    python lessons/lesson_01_dsm/generate_xdsm.py   # -> outputs/asw_xdsm.pdf/.png
+   python lessons/lesson_01_dsm/generate_shapes.py # -> outputs/shape_*.pdf/.png
    ```
 
 2. **[Iterative methods](lesson_02_iterative_methods/docs/lesson_02_iterative_methods.md)**
