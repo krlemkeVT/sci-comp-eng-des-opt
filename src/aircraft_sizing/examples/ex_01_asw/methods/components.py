@@ -250,7 +250,9 @@ class Sizing(om.ImplicitComponent):
         self.add_input("fuel_weight_fraction")
         self.add_input("empty_weight_fraction")
         self.add_input("fixed_weight", val=10_800.0)
-        # lower bound keeps We/WTO = a*WTO^b real (a negative WTO would be NaN);
+        # lower keeps We/WTO = a*WTO^b real (a negative WTO would be NaN) for the
+        # bounds-enforcing linesearches Newton and Broyden run; NonlinearBlockGS
+        # calls solve_nonlinear instead, which clamps the denominator itself.
         # ref scales the ~5e4 lb state so Newton is well conditioned.
         self.add_output("takeoff_gross_weight", val=50_000.0, lower=1.0, ref=1.0e4)
 
@@ -278,7 +280,15 @@ class Sizing(om.ImplicitComponent):
         denominator = (
             1.0 - inputs["fuel_weight_fraction"][0] - inputs["empty_weight_fraction"][0]
         )
-        outputs["takeoff_gross_weight"] = inputs["fixed_weight"][0] / denominator
+        # A non-positive denominator means fuel plus structure already consume the
+        # whole aircraft, and the raw update would be negative -- after which
+        # We/WTO = a*WTO^b is NaN (JAX) or complex (Python) and the run dies with a
+        # type error instead of a diagnosis.  Clamping keeps W_TO real and positive
+        # so the solver simply fails to converge; ``solve`` reports that as a
+        # SizingDivergedError.
+        outputs["takeoff_gross_weight"] = inputs["fixed_weight"][0] / max(
+            denominator, D.MINIMUM_SIZING_DENOMINATOR
+        )
 
     def linearize(self, inputs, outputs, partials) -> None:
         if self.options["deriv"] == "fd":

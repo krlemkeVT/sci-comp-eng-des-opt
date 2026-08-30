@@ -205,6 +205,60 @@ class StreamlitPageAppTestTests(unittest.TestCase):
             baseline_solution.final_takeoff_gross_weight_lb,
         )
 
+    def test_baseline_range_trade_spans_1000_to_2000_nm_and_is_convex(self) -> None:
+        sweep_settings = self.app.session_state[page_module._APPLIED_STATE_KEY].sensitivity
+        self.assertEqual(sweep_settings.input_name, "cruise_range_one_way_nm")
+        self.assertEqual(sweep_settings.low_value, 1_000.0)
+        self.assertEqual(sweep_settings.high_value, 2_000.0)
+
+        sweep = self.app.session_state[page_module._LAST_SENSITIVITY_KEY]
+        ranges = [value for value, _ in sweep]
+        weights = [result.final_takeoff_gross_weight_lb for _, result in sweep]
+        self.assertEqual(ranges[0], 1_000.0)
+        self.assertEqual(ranges[-1], 2_000.0)
+        # Doubling the range nearly doubles the aircraft, and each successive step
+        # costs more than the one before it -- the point of widening the trade.
+        self.assertGreater(weights[-1] / weights[0], 1.8)
+        steps = [b - a for a, b in zip(weights, weights[1:])]
+        for earlier, later in zip(steps, steps[1:]):
+            self.assertGreater(later, earlier)
+
+    def test_switching_the_sweep_input_reloads_that_inputs_band(self) -> None:
+        # The band slider lives inside the sidebar form, so on the click that
+        # switches inputs it still holds the previous input's endpoints. Those are
+        # meaningless on the new scale and must be replaced, not carried over.
+        self.app.selectbox(page_module._widget_key("sensitivity_input_name")).set_value(
+            "wing_aspect_ratio"
+        )
+        self._click_button("Recompute")
+
+        self.assertEqual(len(self.app.exception), 0)
+        sweep_settings = self.app.session_state[page_module._APPLIED_STATE_KEY].sensitivity
+        aspect_ratio_spec = page_module._INPUT_SPECS["wing_aspect_ratio"]
+        self.assertEqual(sweep_settings.input_name, "wing_aspect_ratio")
+        self.assertEqual(sweep_settings.low_value, aspect_ratio_spec.sweep_low)
+        self.assertEqual(sweep_settings.high_value, aspect_ratio_spec.sweep_high)
+        self.assertEqual(
+            self.app.session_state[page_module._widget_key("sensitivity_bounds")],
+            (aspect_ratio_spec.sweep_low, aspect_ratio_spec.sweep_high),
+        )
+
+    def test_unreachable_iteration_cap_warns_and_keeps_the_last_result(self) -> None:
+        baseline_solution = self.app.session_state[page_module._LAST_SOLUTION_KEY]
+
+        self.app.number_input(page_module._widget_key("maximum_iterations")).set_value(3)
+        self._click_button("Recompute")
+
+        # A solve the model cannot close must reach the student as a warning banner,
+        # not as a Streamlit traceback or a silently wrong takeoff weight.
+        self.assertEqual(len(self.app.exception), 0)
+        self.assertEqual(self.app.session_state[page_module._STATUS_KIND_KEY], "warning")
+        self.assertIn("did not converge", self.app.session_state[page_module._LAST_ERROR_KEY])
+        self.assertEqual(
+            self.app.session_state[page_module._LAST_SOLUTION_KEY].final_takeoff_gross_weight_lb,
+            baseline_solution.final_takeoff_gross_weight_lb,
+        )
+
     def test_material_radio_switches_to_composite(self) -> None:
         baseline_solution = self.app.session_state[page_module._LAST_SOLUTION_KEY]
         material_key = page_module._widget_key(page_module._MATERIAL_KEY)

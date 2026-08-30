@@ -104,6 +104,10 @@ def make_nonlinear_solver(kind: str, *, maxiter: int = 200, iprint: int = 0):
     solver.options["atol"] = 1e-10
     solver.options["rtol"] = 1e-12
     solver.options["iprint"] = iprint
+    # Surface a run that never converged as an AnalysisError instead of quietly
+    # returning the last (meaningless) iterate; ``config.solve`` turns it into a
+    # SizingDivergedError the app can report.
+    solver.options["err_on_non_converge"] = True
     return solver
 
 
@@ -115,19 +119,20 @@ def build_asw_problem(
     deriv: str = "jax",
     counter=None,
     initial_guess: float | None = None,
+    maxiter: int = 200,
     iprint: int = 0,
 ) -> om.Problem:
     """Return a set-up ``om.Problem`` for the ASW sizing group.
 
     ``params`` holds the discipline constants (k_ld, material_factor, ...);
     ``input_values`` holds the top-level input values keyed by full path
-    (e.g. ``"aero.wing_aspect_ratio"``).
+    (e.g. ``"aero.wing_aspect_ratio"``); ``maxiter`` caps the nonlinear solver.
     """
     # reports=False keeps OpenMDAO from writing a per-problem reports directory on
     # every solve (the app and sweeps build many problems).
     prob = om.Problem(reports=False)
     prob.model = ASWSizingGroup(params=params, counter=counter, deriv=deriv)
-    prob.model.nonlinear_solver = make_nonlinear_solver(solver, iprint=iprint)
+    prob.model.nonlinear_solver = make_nonlinear_solver(solver, maxiter=maxiter, iprint=iprint)
     prob.model.linear_solver = om.DirectSolver()
 
     prob.setup(force_alloc_complex=False)

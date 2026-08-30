@@ -13,6 +13,7 @@ from math import isfinite
 from typing import Iterable
 
 import numpy as np
+import openmdao.api as om
 
 from . import disciplines as D
 from .components import CallCounter
@@ -23,6 +24,7 @@ __all__ = [
     "SegmentRatios",
     "IterationStep",
     "ASWSizingResult",
+    "SizingDivergedError",
     "solve",
     "input_sensitivity_sweep",
     "derived_quantities",
@@ -30,6 +32,18 @@ __all__ = [
     "mission_fractions",
     "CallCounter",
 ]
+
+
+class SizingDivergedError(RuntimeError):
+    """The sizing loop did not close on a physically meaningful takeoff weight.
+
+    Raised rather than letting a broken solve escape as a NaN weight or a complex
+    ``W_TO ** b``.  The usual cause is a mission the historical empty-weight
+    regression cannot carry: once ``Wf/WTO + We/WTO`` reaches 1 no positive
+    ``W_TO`` satisfies ``WTO*(1 - Wf/WTO - We/WTO) = W_fixed`` from the given
+    starting guess, and the iteration runs away instead of converging.  For the
+    Raymer 3.6 baseline that happens a little beyond a 3,000 nm one-way cruise.
+    """
 
 
 # --------------------------------------------------------------------------- #
@@ -274,7 +288,17 @@ def _fixed_point_history(
         empty_fraction = float(
             D.empty_weight_fraction(guess, coefficient, exponent, material_factor)
         )
-        updated = fixed_weight / (1.0 - fuel_weight_fraction - empty_fraction)
+        denominator = 1.0 - fuel_weight_fraction - empty_fraction
+        if denominator < D.MINIMUM_SIZING_DENOMINATOR:
+            # Wf/WTO + We/WTO has reached 1: the next iterate would be negative and
+            # ``negative ** -0.07`` is complex.  Stop with a diagnosis instead.
+            raise SizingDivergedError(
+                f"The sizing fixed point ran away at iteration {k}: "
+                f"Wf/WTO = {fuel_weight_fraction:.4f} and We/WTO = {empty_fraction:.4f} "
+                f"leave {denominator:.4f} of the aircraft for the fixed weight. "
+                "Shorten the mission, cut the fixed weight, or start from a heavier guess."
+            )
+        updated = fixed_weight / denominator
         difference = updated - guess
         steps.append(
             IterationStep(
@@ -311,6 +335,12 @@ def solve(
     ``solver`` selects the Group nonlinear solver ("nlbgs" == the classic Raymer
     fixed point; also "nlbgs_aitken", "newton", "broyden").  ``deriv`` selects
     analytic JAX partials ("jax") or OpenMDAO finite difference ("fd").
+    ``max_iterations`` caps the nonlinear solver (and the replayed fixed-point
+    history); ``convergence_tolerance_lb`` is the acceptance tolerance on the
+    sizing residual ``WTO*(1 - Wf/WTO - We/WTO) - W_fixed``, which is in pounds.
+
+    Raises :class:`SizingDivergedError` when the loop does not close -- a diverged
+    solve must never be returned as if it were an answer.
     """
     prob = build_asw_problem(
         inputs.params(),
@@ -319,15 +349,57 @@ def solve(
         deriv=deriv,
         counter=counter,
         initial_guess=initial_guess,
+        maxiter=max_iterations,
     )
     # Broyden's convergence-ratio check divides by a zero residual norm once it
     # converges exactly; ignore that harmless numpy warning.
-    with np.errstate(divide="ignore", invalid="ignore"):
-        prob.run_model()
+    try:
+        with np.errstate(divide="ignore", invalid="ignore"):
+            prob.run_model()
+    except om.AnalysisError as error:
+        # Past roughly 3,000 nm the baseline genuinely runs away from a light start;
+        # below that a non-convergence is almost always just too tight a cap.
+        hint = (
+            "Fuel plus empty weight consume the whole takeoff weight at this range, so the "
+            "iteration runs away from a light start; try a much heavier initial guess."
+            if inputs.cruise_range_one_way_nm > 2_800.0
+            else "Raise the iteration cap, or start from a different initial guess."
+        )
+        raise SizingDivergedError(
+            f"The {solver} solver did not converge in {max_iterations} iterations for a "
+            f"{inputs.cruise_range_one_way_nm:,.0f} nm cruise ({error}). {hint}"
+        ) from error
 
     w_to = float(prob.get_val("sizing.takeoff_gross_weight")[0])
-    empty_fraction = float(prob.get_val("struct.empty_weight_fraction")[0])
     fuel_fraction = float(prob.get_val("mission.fuel_weight_fraction")[0])
+    if not isfinite(w_to) or w_to <= 0.0:
+        raise SizingDivergedError(
+            f"The {solver} solver produced a non-physical takeoff gross weight "
+            f"({w_to!r} lb) for a {inputs.cruise_range_one_way_nm:,.0f} nm cruise, with "
+            f"Wf/WTO = {fuel_fraction:.4f}."
+        )
+
+    # Re-evaluate We/WTO at the returned W_TO instead of reading the fraction the
+    # solver left in ``struct``: under NonlinearBlockGS that stored value is one
+    # iterate stale, and since ``Sizing.solve_nonlinear`` inverts the identity with
+    # exactly that stale fraction, a residual formed from it is identically zero
+    # even for a run that never converged.
+    empty_fraction = float(
+        D.empty_weight_fraction(
+            w_to,
+            inputs.empty_weight_fraction_coefficient,
+            inputs.empty_weight_fraction_exponent,
+            inputs.material_factor,
+        )
+    )
+    residual = w_to * (1.0 - fuel_fraction - empty_fraction) - inputs.fixed_weight_lb
+    if not isfinite(residual) or abs(residual) > convergence_tolerance_lb:
+        raise SizingDivergedError(
+            f"The {solver} solver stopped {abs(residual):,.3f} lb from closing the sizing "
+            f"identity WTO*(1 - Wf/WTO - We/WTO) = W_fixed, outside the "
+            f"{convergence_tolerance_lb:,.3f} lb tolerance. Raise the iteration cap or the "
+            "tolerance, or start from a different initial guess."
+        )
 
     dq = derived_quantities(inputs)
     ratios = segment_ratios(inputs)

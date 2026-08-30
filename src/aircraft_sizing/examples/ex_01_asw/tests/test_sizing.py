@@ -9,6 +9,7 @@ import unittest
 
 from aircraft_sizing.examples.ex_01_asw.methods.config import (
     ASWSizingInputs,
+    SizingDivergedError,
     derived_quantities,
     input_sensitivity_sweep,
     mission_fractions,
@@ -98,6 +99,41 @@ class SolveTests(unittest.TestCase):
         )
         weights = [result.final_takeoff_gross_weight_lb for _, result in sweep]
         self.assertTrue(weights[0] < weights[1] < weights[2])
+
+    def test_range_trade_grows_strongly_nonlinearly(self) -> None:
+        # The app's range trade spans 1,000-2,000 nm precisely because the response
+        # is convex, not linear: doubling the range nearly doubles the aircraft, and
+        # the marginal cost per nm more than doubles across the band.
+        sweep = input_sensitivity_sweep(
+            self.inputs, "cruise_range_one_way_nm", (1_000.0, 1_500.0, 2_000.0)
+        )
+        low, middle, high = (result.final_takeoff_gross_weight_lb for _, result in sweep)
+        self.assertAlmostEqual(low, 42_801.9, delta=1.0)
+        self.assertAlmostEqual(middle, BASELINE_TOGW_LB, delta=1.0)
+        self.assertAlmostEqual(high, 82_221.5, delta=1.0)
+        # A straight line would have a zero second difference; this one is ~9,800 lb.
+        self.assertGreater(high - 2.0 * middle + low, 5_000.0)
+        # The second half of the band costs well over 1.5x the first half.
+        self.assertGreater((high - middle) / (middle - low), 1.5)
+
+    def test_sweep_over_the_full_app_band_stays_convex(self) -> None:
+        values = tuple(1_000.0 + 125.0 * i for i in range(9))
+        sweep = input_sensitivity_sweep(self.inputs, "cruise_range_one_way_nm", values)
+        weights = [result.final_takeoff_gross_weight_lb for _, result in sweep]
+        steps = [b - a for a, b in zip(weights, weights[1:])]
+        for earlier, later in zip(steps, steps[1:]):
+            self.assertGreater(later, earlier)
+
+    def test_range_beyond_model_validity_reports_divergence(self) -> None:
+        # Past ~3,000 nm the fixed point runs away from the default 50,000 lb start.
+        # That must surface as a SizingDivergedError, never as a NaN weight, a
+        # complex W_TO ** b, or a plausible-looking number.
+        with self.assertRaises(SizingDivergedError):
+            solve(self.inputs.with_value("cruise_range_one_way_nm", 3_500.0))
+
+    def test_iteration_cap_the_solver_cannot_meet_reports_divergence(self) -> None:
+        with self.assertRaises(SizingDivergedError):
+            solve(self.inputs, max_iterations=3)
 
 
 class GradientTests(unittest.TestCase):

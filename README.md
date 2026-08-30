@@ -132,7 +132,7 @@ The page has a **control sidebar on the left** and **results on the right**. Res
 - **Aerodynamics — number fields.** Wing aspect ratio and wetted-area ratio S_wet/S_ref. Maximum L/D is *computed* from these (Raymer Eq. 3.12), not entered.
 - **Structure — radio.** Switch between **metal** and **composite** (composite scales the empty-weight fraction by 0.95).
 - **Solver controls — number fields.** Initial TOGW guess, convergence tolerance, and maximum iterations.
-- **One-at-a-time sensitivity sweep.** Pick the swept input — cruise range, mission-equipment weight, aspect ratio, or cruise TSFC — plus the ± span (slider) and number of samples.
+- **One-at-a-time sensitivity sweep.** Pick the swept input — cruise range, mission-equipment weight, aspect ratio, or cruise TSFC — then set the **absolute band** to sweep (a two-ended slider) and the number of samples. The default is a **1,000–2,000 nm range trade**, wide enough to show that TOGW grows strongly nonlinearly with range.
 
 Everything else (cruise Mach, altitude, speed of sound, crew weight, prelanding loiter, historical segment ratios, and the fuel/empty-weight allowances) stays fixed at the Raymer 3.6 baseline.
 
@@ -149,7 +149,9 @@ Everything else (cruise Mach, altitude, speed of sound, crew weight, prelanding 
 - **Convergence:** the fixed-point convergence plot and the iteration-by-iteration table.
 - **Sensitivity & sanity checks:** the one-at-a-time TOGW sensitivity plot and table, plus automated sanity checks.
 
-**Try it:** drag the **One-way cruise range** slider up, click **Recompute**, and watch the **Final TOGW** metric rise (a longer cruise burns more fuel, so the sized aircraft gets heavier). Then switch the **Sensitivity** tab's swept input to explore how each assumption drives the final weight. Click **Reset baseline** to return to the defaults.
+**Try it:** open the **Sensitivity** tab on the default 1,000–2,000 nm range trade. TOGW goes from **42,802 lb to 82,222 lb** — doubling the range nearly doubles the aircraft, and each extra 250 nm costs more than the last, because more fuel means a heavier aircraft which then burns more fuel. Then drag the **One-way cruise range** slider and click **Recompute** to move the operating point along that curve, or switch the swept input to see how each assumption drives the final weight. Click **Reset baseline** to return to the defaults.
+
+> Past roughly **3,000 nm** this Class I method stops having an answer: fuel plus empty weight consume the whole aircraft. The app reports that as a warning and keeps the last valid result rather than showing a meaningless number.
 
 ## Maintaining the environment
 

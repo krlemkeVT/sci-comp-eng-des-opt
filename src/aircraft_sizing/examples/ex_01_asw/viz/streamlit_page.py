@@ -35,6 +35,9 @@ _LAST_SENSITIVITY_KEY = "asw_streamlit_last_sensitivity"
 _STATUS_MESSAGE_KEY = "asw_streamlit_status_message"
 _STATUS_KIND_KEY = "asw_streamlit_status_kind"
 _LAST_ERROR_KEY = "asw_streamlit_last_error"
+#: Which input the sweep-bounds slider currently holds endpoints for. Not a widget
+#: key: the bounds are absolute, so they only mean something alongside their input.
+_SWEEP_BOUNDS_OWNER_KEY = "asw_streamlit_sweep_bounds_owner"
 
 _SOLVER_LABELS = {
     "nlbgs": "Fixed point (NL block Gauss-Seidel)",
@@ -50,28 +53,49 @@ class _FieldSpec:
     label: str
     units: str
     step: float
-    sensitivity_min: float | None = None
-    sensitivity_max: float | None = None
     slider_min: float | None = None
     slider_max: float | None = None
+    #: Hard limits the sensitivity sweep offers for this input, plus the default
+    #: band it opens on. Only inputs that carry all four are sweepable.
+    sweep_min: float | None = None
+    sweep_max: float | None = None
+    sweep_low: float | None = None
+    sweep_high: float | None = None
 
     @property
     def is_slider(self) -> bool:
         return self.slider_min is not None and self.slider_max is not None
 
+    @property
+    def is_sweepable(self) -> bool:
+        return None not in (self.sweep_min, self.sweep_max, self.sweep_low, self.sweep_high)
+
 
 @dataclass(frozen=True, slots=True)
 class _SensitivitySweepSettings:
+    """An absolute band to sweep one input over, e.g. cruise range 1,000-2,000 nm.
+
+    Absolute endpoints rather than a symmetric percentage about the current value:
+    the TOGW response to range is strongly convex, and a +/-10 % band about the
+    1,500 nm baseline is far too narrow to show it -- over 1,350-1,650 nm the
+    curvature is only about 4 % of the slope, so the plot reads as a straight line.
+    """
+
     input_name: str = "cruise_range_one_way_nm"
-    relative_span_fraction: float = 0.10
+    low_value: float = 1_000.0
+    high_value: float = 2_000.0
     sample_count: int = 9
 
     def __post_init__(self) -> None:
-        valid = {field.name for field in fields(ASWSizingInputs)}
-        if self.input_name not in valid:
-            raise ValueError(f"input_name must be one of {sorted(valid)}; got {self.input_name!r}.")
-        if self.relative_span_fraction <= 0.0:
-            raise ValueError("relative_span_fraction must be > 0.")
+        spec = _INPUT_SPECS.get(self.input_name)
+        if spec is None or not spec.is_sweepable:
+            raise ValueError(
+                f"input_name must be one of {sorted(_SWEEP_INPUT_NAMES)}; got {self.input_name!r}."
+            )
+        if self.high_value <= self.low_value:
+            raise ValueError(
+                f"high_value must exceed low_value; got {self.low_value!r} to {self.high_value!r}."
+            )
         if self.sample_count < 3:
             raise ValueError("sample_count must be >= 3.")
 
@@ -113,35 +137,56 @@ _INPUT_GROUPS: tuple[tuple[str, tuple[_FieldSpec, ...]], ...] = (
     (
         "Mission",
         (
-            _FieldSpec("cruise_range_one_way_nm", "One-way cruise range", "nm", 25.0, 1e-6, slider_min=500.0, slider_max=3_000.0),
-            _FieldSpec("mission_equipment_weight_lb", "Mission equipment weight", "lb", 250.0, 0.0, slider_min=0.0, slider_max=30_000.0),
-            _FieldSpec("loiter_on_station_endurance_hr", "On-station loiter endurance", "hr", 0.1, 1e-6, slider_min=0.5, slider_max=10.0),
+            # The sweep stops at 3,000 nm: past roughly there the Raymer 3.6 fixed
+            # point runs away from the 50,000 lb start instead of sizing an aircraft.
+            _FieldSpec(
+                "cruise_range_one_way_nm", "One-way cruise range", "nm", 25.0,
+                slider_min=500.0, slider_max=3_000.0,
+                sweep_min=500.0, sweep_max=3_000.0, sweep_low=1_000.0, sweep_high=2_000.0,
+            ),
+            _FieldSpec(
+                "mission_equipment_weight_lb", "Mission equipment weight", "lb", 250.0,
+                slider_min=0.0, slider_max=30_000.0,
+                sweep_min=0.0, sweep_max=30_000.0, sweep_low=5_000.0, sweep_high=15_000.0,
+            ),
+            _FieldSpec(
+                "loiter_on_station_endurance_hr", "On-station loiter endurance", "hr", 0.1,
+                slider_min=0.5, slider_max=10.0,
+            ),
         ),
     ),
     (
         "Propulsion",
         (
-            _FieldSpec("cruise_thrust_specific_fuel_consumption_lb_per_hr_per_lb", "Cruise TSFC", "lb/hr/lb", 0.01, 1e-6),
-            _FieldSpec("loiter_thrust_specific_fuel_consumption_lb_per_hr_per_lb", "Loiter TSFC", "lb/hr/lb", 0.01, 1e-6),
+            _FieldSpec(
+                "cruise_thrust_specific_fuel_consumption_lb_per_hr_per_lb", "Cruise TSFC",
+                "lb/hr/lb", 0.01,
+                sweep_min=0.2, sweep_max=1.0, sweep_low=0.35, sweep_high=0.75,
+            ),
+            _FieldSpec(
+                "loiter_thrust_specific_fuel_consumption_lb_per_hr_per_lb", "Loiter TSFC",
+                "lb/hr/lb", 0.01,
+            ),
         ),
     ),
     (
         "Aerodynamics",
         (
-            _FieldSpec("wing_aspect_ratio", "Wing aspect ratio", "unitless", 0.1, 1e-6),
-            _FieldSpec("wetted_area_ratio_s_wet_over_s_ref", "Wetted-area ratio S_wet/S_ref", "unitless", 0.1, 1e-6),
+            _FieldSpec(
+                "wing_aspect_ratio", "Wing aspect ratio", "unitless", 0.1,
+                sweep_min=4.0, sweep_max=14.0, sweep_low=5.0, sweep_high=10.0,
+            ),
+            _FieldSpec("wetted_area_ratio_s_wet_over_s_ref", "Wetted-area ratio S_wet/S_ref", "unitless", 0.1),
         ),
     ),
 )
 
 _INPUT_SPECS = {spec.name: spec for _, specs in _INPUT_GROUPS for spec in specs}
 
-# The one-at-a-time sweep is restricted to the four most instructive inputs.
-_SWEEP_INPUT_NAMES: tuple[str, ...] = (
-    "cruise_range_one_way_nm",
-    "mission_equipment_weight_lb",
-    "wing_aspect_ratio",
-    "cruise_thrust_specific_fuel_consumption_lb_per_hr_per_lb",
+# The one-at-a-time sweep is restricted to the inputs that carry sweep limits, so
+# the selectbox and the sweep validator can never disagree about what is offered.
+_SWEEP_INPUT_NAMES: tuple[str, ...] = tuple(
+    name for name, spec in _INPUT_SPECS.items() if spec.is_sweepable
 )
 
 _MATERIAL_KEY = "structure_material"
@@ -164,11 +209,18 @@ def _format_percent(value: float, digits: int = 1) -> str:
     return f"{value:.{digits}%}"
 
 
-def _format_from_step(step: float) -> str:
+def _decimals_from_step(step: float) -> int:
     step_text = f"{step:.10f}".rstrip("0")
-    if "." not in step_text:
-        return "%.0f"
-    return f"%.{len(step_text.split('.')[1])}f"
+    return 0 if "." not in step_text else len(step_text.split(".")[1])
+
+
+def _format_from_step(step: float) -> str:
+    return f"%.{_decimals_from_step(step)}f"
+
+
+def _format_at_step(value: float, step: float) -> str:
+    """Format ``value`` with just the decimals ``step`` resolves -- 1,000 nm, 0.35 lb/hr/lb."""
+    return f"{value:,.{_decimals_from_step(step)}f}"
 
 
 def _field_label(spec: _FieldSpec) -> str:
@@ -187,8 +239,44 @@ def _set_form_state(state: _PageState) -> None:
     st.session_state[_widget_key("convergence_tolerance_lb")] = float(state.convergence_tolerance_lb)
     st.session_state[_widget_key("maximum_iterations")] = int(state.maximum_iterations)
     st.session_state[_widget_key("sensitivity_input_name")] = state.sensitivity.input_name
-    st.session_state[_widget_key("sensitivity_relative_span_fraction")] = float(state.sensitivity.relative_span_fraction)
     st.session_state[_widget_key("sensitivity_sample_count")] = int(state.sensitivity.sample_count)
+    _set_sweep_bounds_state(state.sensitivity)
+
+
+def _set_sweep_bounds_state(sweep: _SensitivitySweepSettings) -> None:
+    """Point the bounds slider at ``sweep``'s input and load its endpoints."""
+    st.session_state[_widget_key("sensitivity_bounds")] = (
+        float(sweep.low_value),
+        float(sweep.high_value),
+    )
+    st.session_state[_SWEEP_BOUNDS_OWNER_KEY] = sweep.input_name
+
+
+def _sweep_bounds_owner() -> str:
+    """The input whose scale the bounds slider currently holds endpoints for."""
+    owner = st.session_state.get(_SWEEP_BOUNDS_OWNER_KEY)
+    if isinstance(owner, str) and owner in _SWEEP_INPUT_NAMES:
+        return owner
+    return _SWEEP_INPUT_NAMES[0]
+
+
+def _read_sweep_bounds(input_name: str) -> tuple[float, float]:
+    """Endpoints for ``input_name``, clamped to its limits.
+
+    The bounds slider sits inside the sidebar form, so it was drawn with whatever
+    input was selected at the time. If the student switches the sweep input and
+    recomputes in the same click, the stored pair belongs to the previous input and
+    is meaningless on the new scale -- fall back to the new input's default band.
+    """
+    spec = _INPUT_SPECS[input_name]
+    if _sweep_bounds_owner() != input_name:
+        return float(spec.sweep_low), float(spec.sweep_high)
+    low, high = st.session_state[_widget_key("sensitivity_bounds")]
+    low = min(max(float(low), spec.sweep_min), spec.sweep_max)
+    high = min(max(float(high), spec.sweep_min), spec.sweep_max)
+    if high <= low:
+        return float(spec.sweep_low), float(spec.sweep_high)
+    return low, high
 
 
 def _read_form_state() -> _PageState:
@@ -198,6 +286,8 @@ def _read_form_state() -> _PageState:
         structure_material=str(st.session_state[_widget_key(_MATERIAL_KEY)]),
         **widget_values,
     )
+    sweep_input_name = str(st.session_state[_widget_key("sensitivity_input_name")])
+    low_value, high_value = _read_sweep_bounds(sweep_input_name)
     return _PageState(
         inputs=inputs,
         solver=str(st.session_state[_widget_key("solver")]),
@@ -205,8 +295,9 @@ def _read_form_state() -> _PageState:
         convergence_tolerance_lb=float(st.session_state[_widget_key("convergence_tolerance_lb")]),
         maximum_iterations=int(st.session_state[_widget_key("maximum_iterations")]),
         sensitivity=_SensitivitySweepSettings(
-            input_name=str(st.session_state[_widget_key("sensitivity_input_name")]),
-            relative_span_fraction=float(st.session_state[_widget_key("sensitivity_relative_span_fraction")]),
+            input_name=sweep_input_name,
+            low_value=low_value,
+            high_value=high_value,
             sample_count=int(st.session_state[_widget_key("sensitivity_sample_count")]),
         ),
     )
@@ -214,20 +305,10 @@ def _read_form_state() -> _PageState:
 
 def _build_sensitivity_values(state: _PageState) -> tuple[float, ...]:
     spec = _INPUT_SPECS[state.sensitivity.input_name]
-    center = float(getattr(state.inputs, state.sensitivity.input_name))
-    span = state.sensitivity.relative_span_fraction
-    if center == 0.0:
-        low, high = -span, span
-    else:
-        low, high = center * (1.0 - span), center * (1.0 + span)
-    low, high = sorted((low, high))
-    if spec.sensitivity_min is not None:
-        low, high = max(low, spec.sensitivity_min), max(high, spec.sensitivity_min)
-    if spec.sensitivity_max is not None:
-        low, high = min(low, spec.sensitivity_max), min(high, spec.sensitivity_max)
+    low = min(max(state.sensitivity.low_value, spec.sweep_min), spec.sweep_max)
+    high = min(max(state.sensitivity.high_value, spec.sweep_min), spec.sweep_max)
     if high <= low:
-        delta = max(abs(center) * span, spec.step, 1e-6)
-        low, high = center - delta, center + delta
+        low, high = float(spec.sweep_low), float(spec.sweep_high)
     spacing = (high - low) / (state.sensitivity.sample_count - 1)
     values = [low + spacing * i for i in range(state.sensitivity.sample_count)]
     unique = []
@@ -240,29 +321,40 @@ def _build_sensitivity_values(state: _PageState) -> tuple[float, ...]:
 # --------------------------------------------------------------------------- #
 # Solve orchestration
 # --------------------------------------------------------------------------- #
+#: Failures a single sweep sample is allowed to have: an input the validator
+#: rejects, a mission the sizing loop cannot close, or arithmetic that overflowed.
+#: Anything else is a bug and must not be silently counted as "skipped".
+_SWEEP_SAMPLE_FAILURES = (ValueError, ArithmeticError, RuntimeError)
+
+
 def _run_sensitivity_sweep(state: _PageState) -> tuple[tuple[tuple[float, ASWSizingResult], ...], int]:
     results: list[tuple[float, ASWSizingResult]] = []
     skipped = 0
     for value in _build_sensitivity_values(state):
         try:
             result = solve(state.inputs.with_value(state.sensitivity.input_name, value), **state.solve_kwargs())
-        except (ValueError, RuntimeError):
+        except _SWEEP_SAMPLE_FAILURES:
             skipped += 1
             continue
         results.append((float(value), result))
     return tuple(results), skipped
 
 
-def _apply_state(state: _PageState, success_message: str) -> None:
+def _report_failure(error: Exception, message: str) -> None:
+    st.session_state[_LAST_ERROR_KEY] = str(error)
+    st.session_state[_STATUS_KIND_KEY] = "warning"
+    st.session_state[_STATUS_MESSAGE_KEY] = message
+
+
+def _apply_state(state: _PageState, success_message: str) -> bool:
+    """Solve ``state``, publish it to the session, and report whether that worked."""
     try:
         solution = solve(state.inputs, **state.solve_kwargs())
+        sensitivity_results, skipped = _run_sensitivity_sweep(state)
     except Exception as error:  # noqa: BLE001 - surface any solve failure to the user
-        st.session_state[_LAST_ERROR_KEY] = str(error)
-        st.session_state[_STATUS_KIND_KEY] = "warning"
-        st.session_state[_STATUS_MESSAGE_KEY] = "Recompute failed. Showing the last valid result."
-        return
+        _report_failure(error, "Recompute failed. Showing the last valid result.")
+        return False
 
-    sensitivity_results, skipped = _run_sensitivity_sweep(state)
     st.session_state[_APPLIED_STATE_KEY] = state
     st.session_state[_LAST_SOLUTION_KEY] = solution
     st.session_state[_LAST_SENSITIVITY_KEY] = sensitivity_results
@@ -270,14 +362,26 @@ def _apply_state(state: _PageState, success_message: str) -> None:
     st.session_state[_STATUS_KIND_KEY] = "success"
     if skipped:
         st.session_state[_STATUS_MESSAGE_KEY] = (
-            f"{success_message} Skipped {skipped} out-of-range sweep sample{'s' if skipped != 1 else ''}."
+            f"{success_message} Skipped {skipped} sweep sample{'s' if skipped != 1 else ''} "
+            "the sizing loop could not close."
         )
     else:
         st.session_state[_STATUS_MESSAGE_KEY] = success_message
+    # The applied bounds are what the slider should show next run, and they are only
+    # meaningful next to the input they were measured on.
+    _set_sweep_bounds_state(state.sensitivity)
+    return True
 
 
 def _handle_recompute() -> None:
-    _apply_state(_read_form_state(), "Recomputed from the visible sidebar inputs.")
+    try:
+        state = _read_form_state()
+    except ValueError as error:
+        # ASWSizingInputs and the sweep settings validate on construction, so an
+        # unusable entry lands here rather than escaping the on_click callback.
+        _report_failure(error, "Those inputs are not valid. Showing the last valid result.")
+        return
+    _apply_state(state, "Recomputed from the visible sidebar inputs.")
 
 
 def _handle_reset() -> None:
@@ -291,8 +395,11 @@ def _initialize_session_state() -> None:
         return
     baseline_state = _make_baseline_page_state()
     _set_form_state(baseline_state)
-    _apply_state(baseline_state, "Loaded the approved baseline configuration.")
-    st.session_state[_INITIALIZED_KEY] = True
+    # Only latch initialization on success: marking a failed first solve as
+    # initialized would skip this branch forever and leave the page with no
+    # solution to render.
+    if _apply_state(baseline_state, "Loaded the approved baseline configuration."):
+        st.session_state[_INITIALIZED_KEY] = True
 
 
 def _resolve_xdsm_path() -> Path:
@@ -499,6 +606,10 @@ def _render_sidebar() -> None:
                             st.number_input(
                                 _field_label(spec),
                                 key=_widget_key(spec.name),
+                                # Every free-entry field here must stay strictly
+                                # positive for ASWSizingInputs to accept it; one
+                                # step is the smallest value worth offering.
+                                min_value=spec.step,
                                 step=spec.step,
                                 format=_format_from_step(spec.step),
                             )
@@ -521,9 +632,35 @@ def _render_sidebar() -> None:
                     format_func=lambda name: _SOLVER_LABELS.get(name, name),
                     help="All solvers converge to the same TOGW; Lesson 2 compares their cost.",
                 )
-                st.number_input("Initial TOGW guess [lb]", key=_widget_key("initial_guess_lb"), step=500.0, format="%.1f")
-                st.number_input("Convergence tolerance [lb]", key=_widget_key("convergence_tolerance_lb"), step=0.1, format="%.1f")
-                st.number_input("Maximum iterations [count]", key=_widget_key("maximum_iterations"), step=1, format="%d")
+                st.number_input(
+                    "Initial TOGW guess [lb]",
+                    key=_widget_key("initial_guess_lb"),
+                    min_value=1_000.0,
+                    max_value=1_000_000.0,
+                    step=500.0,
+                    format="%.1f",
+                    help="Where the iteration starts. Past about 3,000 nm of range the "
+                    "default 50,000 lb start runs away and only a much heavier guess converges.",
+                )
+                st.number_input(
+                    "Convergence tolerance [lb]",
+                    key=_widget_key("convergence_tolerance_lb"),
+                    min_value=0.001,
+                    max_value=100.0,
+                    step=0.1,
+                    format="%.3f",
+                    help="How closely the sizing identity must close before the result is "
+                    "accepted, and the tolerance the replayed iteration table stops at.",
+                )
+                st.number_input(
+                    "Maximum iterations [count]",
+                    key=_widget_key("maximum_iterations"),
+                    min_value=1,
+                    max_value=1_000,
+                    step=1,
+                    format="%d",
+                    help="Iteration cap for the nonlinear solver and for the replayed table.",
+                )
 
             with st.expander("One-at-a-time sensitivity sweep", expanded=True):
                 st.selectbox(
@@ -532,8 +669,26 @@ def _render_sidebar() -> None:
                     options=list(_SWEEP_INPUT_NAMES),
                     format_func=lambda name: _field_label(_INPUT_SPECS[name]),
                 )
-                st.slider("Relative span [fraction]", key=_widget_key("sensitivity_relative_span_fraction"), min_value=0.02, max_value=0.50, step=0.01)
-                st.number_input("Sweep samples [count]", key=_widget_key("sensitivity_sample_count"), step=2, format="%d")
+                sweep_spec = _INPUT_SPECS[_sweep_bounds_owner()]
+                st.slider(
+                    f"Sweep band [{sweep_spec.units}]",
+                    key=_widget_key("sensitivity_bounds"),
+                    min_value=float(sweep_spec.sweep_min),
+                    max_value=float(sweep_spec.sweep_max),
+                    step=sweep_spec.step,
+                    format=_format_from_step(sweep_spec.step),
+                    help="Absolute start and end of the sweep, not a percentage band, so a "
+                    "trade can span the whole design space. Switching the sweep input above "
+                    "reloads that input's default band on the next recompute.",
+                )
+                st.number_input(
+                    "Sweep samples [count]",
+                    key=_widget_key("sensitivity_sample_count"),
+                    min_value=3,
+                    max_value=41,
+                    step=2,
+                    format="%d",
+                )
 
             recompute_column, reset_column = st.columns(2)
             with recompute_column:
@@ -577,6 +732,13 @@ def render() -> None:
     st.set_page_config(page_title="ASW fixed-point sizing tutorial", layout="wide")
     _initialize_session_state()
     _render_sidebar()
+
+    if _LAST_SOLUTION_KEY not in st.session_state:
+        # The very first solve failed, so there is nothing to tabulate yet. Report
+        # why and stop rather than raising a KeyError over every panel below.
+        st.title("ASW fixed-point sizing tutorial")
+        _render_status()
+        st.stop()
 
     result: ASWSizingResult = st.session_state[_LAST_SOLUTION_KEY]
     applied_state: _PageState = st.session_state[_APPLIED_STATE_KEY]
@@ -622,9 +784,12 @@ def render() -> None:
     with convergence_tab:
         st.subheader("Fixed-point convergence")
         st.caption(
-            f"OpenMDAO's {_SOLVER_LABELS.get(result.solver, result.solver)} converged in "
-            f"{result.solver_iterations} iterations. The plot and table below replay the classic Raymer "
-            "fixed-point map (identical iterates, shown to the chosen lb tolerance)."
+            f"OpenMDAO's {_SOLVER_LABELS.get(result.solver, result.solver)} drove the residual "
+            f"to machine tolerance in {result.solver_iterations} iterations. The plot and table "
+            "below are a separate hand replay of the classic Raymer fixed-point map, stopped at "
+            f"the coarser {applied_state.convergence_tolerance_lb:,.3f} lb tolerance, so its "
+            f"{result.iteration_count} steps are not the solver's iterates unless you picked the "
+            "plain fixed point."
         )
         convergence_figure = _build_convergence_figure(applied_state, result)
         st.pyplot(convergence_figure, width="stretch")
@@ -636,8 +801,10 @@ def render() -> None:
         spec = _INPUT_SPECS[applied_state.sensitivity.input_name]
         st.subheader("One-at-a-time final TOGW sensitivity")
         st.caption(
-            f"Figure and table: +/-{applied_state.sensitivity.relative_span_fraction:.0%} sweep around "
-            f"{spec.label.lower()} with {applied_state.sensitivity.sample_count} samples."
+            f"Figure and table: {spec.label.lower()} swept from "
+            f"{_format_at_step(applied_state.sensitivity.low_value, spec.step)} to "
+            f"{_format_at_step(applied_state.sensitivity.high_value, spec.step)} {spec.units} "
+            f"in {applied_state.sensitivity.sample_count} samples, with every other input held fixed."
         )
         sensitivity_figure = _build_sensitivity_figure(applied_state, result, sweep)
         st.pyplot(sensitivity_figure, width="stretch")

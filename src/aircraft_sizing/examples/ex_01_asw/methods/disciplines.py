@@ -24,6 +24,12 @@ FEET_PER_NAUTICAL_MILE = 6076.0
 SECONDS_PER_HOUR = 3600.0
 SECONDS_PER_MINUTE = 60.0
 
+#: Smallest sizing denominator ``1 - Wf/WTO - We/WTO`` treated as physically
+#: meaningful.  At or below zero the fuel and the structure already consume the
+#: whole aircraft, nothing is left to carry the fixed weight, and the Raymer fixed
+#: point has no positive root to walk towards.
+MINIMUM_SIZING_DENOMINATOR = 1.0e-6
+
 
 # --------------------------------------------------------------------------- #
 # Aerodynamics
