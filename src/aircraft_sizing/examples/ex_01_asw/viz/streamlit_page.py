@@ -130,9 +130,10 @@ def _make_baseline_page_state() -> _PageState:
 
 
 # Only the inputs students actually drive are widgets. Everything else (cruise
-# Mach, altitude, speed of sound, crew weight, prelanding loiter, the historical
-# segment ratios, K_LD, the L/D factors, and the fuel/empty-weight allowances)
-# stays fixed at the Raymer 3.6 baseline defined in the model.
+# Mach, crew weight, prelanding loiter, the historical segment ratios, K_LD, the
+# L/D factors, and the fuel/empty-weight allowances) stays fixed at the Raymer 3.6
+# baseline defined in the model.  Speed of sound is deliberately *not* a widget:
+# it is the standard atmosphere's answer to the cruise-altitude slider.
 _INPUT_GROUPS: tuple[tuple[str, tuple[_FieldSpec, ...]], ...] = (
     (
         "Mission",
@@ -143,6 +144,14 @@ _INPUT_GROUPS: tuple[tuple[str, tuple[_FieldSpec, ...]], ...] = (
                 "cruise_range_one_way_nm", "One-way cruise range", "nm", 25.0,
                 slider_min=500.0, slider_max=3_000.0,
                 sweep_min=500.0, sweep_max=3_000.0, sweep_low=1_000.0, sweep_high=2_000.0,
+            ),
+            # Altitude drives the sizing loop only through the ISA speed of sound,
+            # so the trade flattens above the 36,089 ft tropopause where the ICAO
+            # atmosphere holds temperature -- and therefore a -- constant.
+            _FieldSpec(
+                "cruise_altitude_ft", "Cruise altitude", "ft", 500.0,
+                slider_min=0.0, slider_max=45_000.0,
+                sweep_min=0.0, sweep_max=45_000.0, sweep_low=0.0, sweep_high=40_000.0,
             ),
             _FieldSpec(
                 "mission_equipment_weight_lb", "Mission equipment weight", "lb", 250.0,
@@ -441,7 +450,13 @@ def _derived_rows(result: ASWSizingResult) -> list[dict[str, str]]:
         {"Quantity": "One-way cruise range", "Value": _format_number(result.cruise_range_ft, 0), "Units": "ft"},
         {"Quantity": "On-station loiter endurance", "Value": _format_number(result.loiter_on_station_s, 0), "Units": "s"},
         {"Quantity": "Prelanding loiter endurance", "Value": _format_number(result.loiter_prelanding_s, 0), "Units": "s"},
+        {"Quantity": "Cruise altitude", "Value": _format_number(result.cruise_altitude_ft, 0), "Units": "ft"},
+        {"Quantity": "Speed of sound (ISA)", "Value": _format_number(result.speed_of_sound_ft_per_s, 2), "Units": "ft/s"},
+        {"Quantity": "Air density (ISA)", "Value": _format_fraction(result.air_density_slug_per_ft3, 6), "Units": "slug/ft3"},
+        {"Quantity": "Air temperature (ISA)", "Value": _format_number(result.air_temperature_rankine, 1), "Units": "R"},
+        {"Quantity": "Air pressure (ISA)", "Value": _format_number(result.air_pressure_lb_per_ft2, 1), "Units": "lb/ft2"},
         {"Quantity": "Cruise speed", "Value": _format_number(result.cruise_speed_ft_per_s, 1), "Units": "ft/s"},
+        {"Quantity": "Cruise dynamic pressure", "Value": _format_number(result.cruise_dynamic_pressure_lb_per_ft2, 1), "Units": "lb/ft2"},
         {"Quantity": "Cruise TSFC", "Value": _format_fraction(result.sfc_cruise_per_s, 6), "Units": "lb/s/lb"},
         {"Quantity": "Loiter TSFC", "Value": _format_fraction(result.sfc_loiter_per_s, 6), "Units": "lb/s/lb"},
         {"Quantity": "Wetted aspect ratio", "Value": _format_fraction(result.wetted_aspect_ratio), "Units": "unitless"},
@@ -775,7 +790,14 @@ def render() -> None:
     with intermediate_tab:
         top_left, top_right = st.columns(2)
         with top_left:
-            _render_table("Derived values", "Table: Cruise, endurance, and aerodynamic quantities from the current inputs.", _derived_rows(result))
+            _render_table(
+                "Derived values",
+                "Table: Atmosphere, cruise, endurance, and aerodynamic quantities from the "
+                "current inputs. The standard atmosphere follows the cruise-altitude slider, "
+                "but only the speed of sound reaches the sizing loop -- Raymer 3.6 sizes from "
+                "weight fractions, so density, temperature, and pressure are context only.",
+                _derived_rows(result),
+            )
             _render_table("Mission and fuel fractions", "Table: Fuel-related fractions computed from the mission ratios.", _mission_fraction_rows(result))
         with top_right:
             _render_table("Mission segment ratios", "Table: Explicit W-ratio values for the seven-step mission profile.", _segment_rows(result))

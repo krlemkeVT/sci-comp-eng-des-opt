@@ -16,11 +16,13 @@ import numpy as np
 import openmdao.api as om
 
 from . import disciplines as D
+from .atmosphere import AtmosphereState, standard_atmosphere
 from .components import CallCounter
 from .group import build_asw_problem
 
 __all__ = [
     "ASWSizingInputs",
+    "AtmosphereState",
     "SegmentRatios",
     "IterationStep",
     "ASWSizingResult",
@@ -56,7 +58,6 @@ class ASWSizingInputs:
     cruise_range_one_way_nm: float = 1500.0
     cruise_mach_number: float = 0.6
     cruise_altitude_ft: float = 30_000.0
-    speed_of_sound_at_cruise_altitude_ft_per_s: float = 994.8
     mission_equipment_weight_lb: float = 10_000.0
     crew_weight_lb: float = 800.0
     warmup_takeoff_weight_ratio: float = 0.970
@@ -88,6 +89,21 @@ class ASWSizingInputs:
         return replace(self, **{name: value})
 
     # -- derived scalars ------------------------------------------------- #
+    @property
+    def atmosphere(self) -> AtmosphereState:
+        """Standard-atmosphere state at ``cruise_altitude_ft``.
+
+        Cruise altitude used to sit beside a hand-entered speed of sound, so the
+        two could disagree and altitude changed nothing.  Every atmospheric
+        property now comes from here, so altitude is the single source of truth.
+        """
+        return standard_atmosphere(self.cruise_altitude_ft)
+
+    @property
+    def speed_of_sound_at_cruise_altitude_ft_per_s(self) -> float:
+        """ISA speed of sound at cruise altitude -- the one property the loop uses."""
+        return self.atmosphere.speed_of_sound_ft_per_s
+
     @property
     def fixed_weight_lb(self) -> float:
         return self.mission_equipment_weight_lb + self.crew_weight_lb
@@ -189,7 +205,13 @@ class ASWSizingResult:
     cruise_lift_to_drag: float
     loiter_lift_to_drag: float
 
+    cruise_altitude_ft: float
+    speed_of_sound_ft_per_s: float
+    air_density_slug_per_ft3: float
+    air_temperature_rankine: float
+    air_pressure_lb_per_ft2: float
     cruise_speed_ft_per_s: float
+    cruise_dynamic_pressure_lb_per_ft2: float
     sfc_cruise_per_s: float
     sfc_loiter_per_s: float
     cruise_range_ft: float
@@ -208,7 +230,14 @@ class ASWSizingResult:
 # Pure post-processing helpers (W_TO-independent; read straight from disciplines)
 # --------------------------------------------------------------------------- #
 def derived_quantities(inputs: ASWSizingInputs) -> dict:
-    """Aero + propulsion + mission quantities that do not depend on W_TO."""
+    """Aero + propulsion + mission quantities that do not depend on W_TO.
+
+    Density, temperature, and pressure are reported for context only: Raymer 3.6
+    sizes the aircraft from weight fractions alone, so the speed of sound is the
+    single atmospheric property that reaches the sizing loop (through the cruise
+    true airspeed in the Breguet range equation).
+    """
+    atmosphere = inputs.atmosphere
     ld_max, ld_cruise, ld_loiter = (
         float(v)
         for v in D.aerodynamics(
@@ -232,7 +261,15 @@ def derived_quantities(inputs: ASWSizingInputs) -> dict:
         "lift_to_drag_max": ld_max,
         "cruise_lift_to_drag": ld_cruise,
         "loiter_lift_to_drag": ld_loiter,
+        "cruise_altitude_ft": atmosphere.altitude_ft,
+        "speed_of_sound_ft_per_s": atmosphere.speed_of_sound_ft_per_s,
+        "air_density_slug_per_ft3": atmosphere.density_slug_per_ft3,
+        "air_temperature_rankine": atmosphere.temperature_rankine,
+        "air_pressure_lb_per_ft2": atmosphere.pressure_lb_per_ft2,
         "cruise_speed_ft_per_s": cruise_speed,
+        "cruise_dynamic_pressure_lb_per_ft2": atmosphere.dynamic_pressure_lb_per_ft2(
+            cruise_speed
+        ),
         "sfc_cruise_per_s": sfc_cruise,
         "sfc_loiter_per_s": sfc_loiter,
         "cruise_range_ft": inputs.cruise_range_one_way_nm * D.FEET_PER_NAUTICAL_MILE,
@@ -433,7 +470,13 @@ def solve(
         lift_to_drag_max=dq["lift_to_drag_max"],
         cruise_lift_to_drag=dq["cruise_lift_to_drag"],
         loiter_lift_to_drag=dq["loiter_lift_to_drag"],
+        cruise_altitude_ft=dq["cruise_altitude_ft"],
+        speed_of_sound_ft_per_s=dq["speed_of_sound_ft_per_s"],
+        air_density_slug_per_ft3=dq["air_density_slug_per_ft3"],
+        air_temperature_rankine=dq["air_temperature_rankine"],
+        air_pressure_lb_per_ft2=dq["air_pressure_lb_per_ft2"],
         cruise_speed_ft_per_s=dq["cruise_speed_ft_per_s"],
+        cruise_dynamic_pressure_lb_per_ft2=dq["cruise_dynamic_pressure_lb_per_ft2"],
         sfc_cruise_per_s=dq["sfc_cruise_per_s"],
         sfc_loiter_per_s=dq["sfc_loiter_per_s"],
         cruise_range_ft=dq["cruise_range_ft"],
@@ -475,7 +518,6 @@ def _validate_inputs(inputs: ASWSizingInputs) -> None:
     for name in (
         "cruise_range_one_way_nm",
         "cruise_mach_number",
-        "speed_of_sound_at_cruise_altitude_ft_per_s",
         "loiter_on_station_endurance_hr",
         "loiter_prelanding_endurance_min",
         "cruise_thrust_specific_fuel_consumption_lb_per_hr_per_lb",
@@ -486,6 +528,9 @@ def _validate_inputs(inputs: ASWSizingInputs) -> None:
         "empty_weight_fraction_coefficient",
     ):
         _positive(name, getattr(inputs, name))
+    # Altitude may legitimately be zero or negative (Dead Sea airfields), so it is
+    # range-checked against the standard atmosphere rather than required positive.
+    standard_atmosphere(inputs.cruise_altitude_ft)
     for name in ("warmup_takeoff_weight_ratio", "climb_weight_ratio", "landing_weight_ratio", "cruise_lift_to_drag_factor"):
         _fraction(name, getattr(inputs, name))
     if inputs.mission_equipment_weight_lb < 0 or inputs.crew_weight_lb < 0:

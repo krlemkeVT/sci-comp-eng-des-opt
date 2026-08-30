@@ -7,6 +7,11 @@ a finite-difference of the whole solve.
 
 import unittest
 
+from aircraft_sizing.examples.ex_01_asw.methods.atmosphere import (
+    MAXIMUM_ALTITUDE_FT,
+    MINIMUM_ALTITUDE_FT,
+    standard_atmosphere,
+)
 from aircraft_sizing.examples.ex_01_asw.methods.config import (
     ASWSizingInputs,
     SizingDivergedError,
@@ -21,7 +26,63 @@ from aircraft_sizing.examples.ex_01_asw.methods.group import (
     build_asw_problem,
 )
 
-BASELINE_TOGW_LB = 57_618.64
+BASELINE_TOGW_LB = 57_615.87
+
+#: Altitude above which the ICAO standard atmosphere holds temperature -- and so
+#: the speed of sound -- constant, which flattens every altitude trade in this model.
+TROPOPAUSE_FT = 36_089.0
+
+
+class AtmosphereTests(unittest.TestCase):
+    """The ICAO standard atmosphere, in the US customary units the model uses."""
+
+    def test_sea_level_matches_the_standard_atmosphere(self) -> None:
+        sea_level = standard_atmosphere(0.0)
+        self.assertAlmostEqual(sea_level.speed_of_sound_ft_per_s, 1116.45, places=2)
+        self.assertAlmostEqual(sea_level.density_slug_per_ft3, 0.00237689, places=8)
+        self.assertAlmostEqual(sea_level.temperature_rankine, 518.67, places=2)
+        self.assertAlmostEqual(sea_level.pressure_lb_per_ft2, 2116.22, places=2)
+
+    def test_cruise_altitude_matches_the_standard_atmosphere(self) -> None:
+        cruise = standard_atmosphere(30_000.0)
+        self.assertAlmostEqual(cruise.speed_of_sound_ft_per_s, 994.85, places=2)
+        self.assertAlmostEqual(cruise.density_slug_per_ft3, 0.00089069, places=8)
+        self.assertAlmostEqual(cruise.temperature_rankine, 411.84, places=2)
+        self.assertAlmostEqual(cruise.pressure_lb_per_ft2, 629.67, places=2)
+
+    def test_properties_fall_through_the_troposphere(self) -> None:
+        states = [standard_atmosphere(h) for h in (0.0, 10_000.0, 20_000.0, 30_000.0)]
+        for lower, upper in zip(states, states[1:]):
+            self.assertLess(upper.speed_of_sound_ft_per_s, lower.speed_of_sound_ft_per_s)
+            self.assertLess(upper.density_slug_per_ft3, lower.density_slug_per_ft3)
+            self.assertLess(upper.temperature_rankine, lower.temperature_rankine)
+            self.assertLess(upper.pressure_lb_per_ft2, lower.pressure_lb_per_ft2)
+
+    def test_temperature_and_speed_of_sound_plateau_in_the_stratosphere(self) -> None:
+        # Above the tropopause the ICAO atmosphere is isothermal, so a stops falling
+        # even though pressure and density keep dropping.  Every altitude trade in
+        # this model therefore goes flat up there.
+        lower = standard_atmosphere(TROPOPAUSE_FT + 1_000.0)
+        upper = standard_atmosphere(TROPOPAUSE_FT + 9_000.0)
+        self.assertAlmostEqual(upper.temperature_rankine, lower.temperature_rankine, places=6)
+        self.assertAlmostEqual(
+            upper.speed_of_sound_ft_per_s, lower.speed_of_sound_ft_per_s, places=6
+        )
+        self.assertLess(upper.pressure_lb_per_ft2, lower.pressure_lb_per_ft2)
+
+    def test_dynamic_pressure_uses_the_local_density(self) -> None:
+        cruise = standard_atmosphere(30_000.0)
+        expected = 0.5 * cruise.density_slug_per_ft3 * 596.91 ** 2
+        self.assertAlmostEqual(cruise.dynamic_pressure_lb_per_ft2(596.91), expected, places=9)
+
+    def test_altitude_outside_the_standard_atmosphere_raises(self) -> None:
+        for altitude in (MINIMUM_ALTITUDE_FT - 1.0, MAXIMUM_ALTITUDE_FT + 1.0, float("nan")):
+            with self.assertRaises(ValueError):
+                standard_atmosphere(altitude)
+
+    def test_inputs_reject_an_unflyable_altitude(self) -> None:
+        with self.assertRaises(ValueError):
+            ASWSizingInputs(cruise_altitude_ft=500_000.0)
 
 
 class BaselinePhysicsTests(unittest.TestCase):
@@ -34,7 +95,10 @@ class BaselinePhysicsTests(unittest.TestCase):
         self.assertAlmostEqual(derived["lift_to_drag_max"], 15.7941, places=3)
         self.assertAlmostEqual(derived["cruise_lift_to_drag"], 13.6777, places=3)
         self.assertAlmostEqual(derived["loiter_lift_to_drag"], 15.7941, places=3)
-        self.assertAlmostEqual(derived["cruise_speed_ft_per_s"], 596.88, places=2)
+        self.assertAlmostEqual(derived["cruise_speed_ft_per_s"], 596.91, places=2)
+        # Speed of sound is the ISA value at 30,000 ft, not the hand-entered 994.8 the
+        # textbook rounds to; that 0.05 ft/s is the whole reason the numbers below moved.
+        self.assertAlmostEqual(derived["speed_of_sound_ft_per_s"], 994.85, places=2)
 
     def test_segment_ratios_match_worked_example(self) -> None:
         ratios = segment_ratios(self.inputs)
@@ -108,9 +172,9 @@ class SolveTests(unittest.TestCase):
             self.inputs, "cruise_range_one_way_nm", (1_000.0, 1_500.0, 2_000.0)
         )
         low, middle, high = (result.final_takeoff_gross_weight_lb for _, result in sweep)
-        self.assertAlmostEqual(low, 42_801.9, delta=1.0)
+        self.assertAlmostEqual(low, 42_800.7, delta=1.0)
         self.assertAlmostEqual(middle, BASELINE_TOGW_LB, delta=1.0)
-        self.assertAlmostEqual(high, 82_221.5, delta=1.0)
+        self.assertAlmostEqual(high, 82_215.0, delta=1.0)
         # A straight line would have a zero second difference; this one is ~9,800 lb.
         self.assertGreater(high - 2.0 * middle + low, 5_000.0)
         # The second half of the band costs well over 1.5x the first half.
@@ -123,6 +187,43 @@ class SolveTests(unittest.TestCase):
         steps = [b - a for a, b in zip(weights, weights[1:])]
         for earlier, later in zip(steps, steps[1:]):
             self.assertGreater(later, earlier)
+
+    def test_cruise_altitude_changes_the_sized_aircraft(self) -> None:
+        # The regression this guards: cruise_altitude_ft used to be declared and never
+        # read, so 5,000 ft and 30,000 ft returned byte-identical weights.
+        low = solve(self.inputs.with_value("cruise_altitude_ft", 5_000.0))
+        high = solve(self.inputs.with_value("cruise_altitude_ft", 30_000.0))
+        self.assertNotAlmostEqual(
+            low.final_takeoff_gross_weight_lb, high.final_takeoff_gross_weight_lb, places=0
+        )
+        self.assertGreater(low.speed_of_sound_ft_per_s, high.speed_of_sound_ft_per_s)
+        self.assertGreater(low.air_density_slug_per_ft3, high.air_density_slug_per_ft3)
+
+    def test_climbing_through_the_troposphere_costs_takeoff_weight(self) -> None:
+        # Colder air aloft means a lower speed of sound, a slower Mach-0.6 cruise, and
+        # so a worse Breguet range ratio -- the aircraft grows with cruise altitude.
+        sweep = input_sensitivity_sweep(
+            self.inputs, "cruise_altitude_ft", (0.0, 10_000.0, 20_000.0, 30_000.0)
+        )
+        weights = [result.final_takeoff_gross_weight_lb for _, result in sweep]
+        for lighter, heavier in zip(weights, weights[1:]):
+            self.assertGreater(heavier, lighter)
+
+    def test_altitude_trade_goes_flat_above_the_tropopause(self) -> None:
+        # Isothermal air above ~36,089 ft freezes the speed of sound, and with it the
+        # only atmospheric property this model consumes.
+        lower = solve(self.inputs.with_value("cruise_altitude_ft", TROPOPAUSE_FT + 1_000.0))
+        upper = solve(self.inputs.with_value("cruise_altitude_ft", TROPOPAUSE_FT + 9_000.0))
+        self.assertAlmostEqual(
+            upper.final_takeoff_gross_weight_lb,
+            lower.final_takeoff_gross_weight_lb,
+            places=4,
+        )
+        # Density still falls, so the reported cruise dynamic pressure keeps dropping.
+        self.assertLess(
+            upper.cruise_dynamic_pressure_lb_per_ft2,
+            lower.cruise_dynamic_pressure_lb_per_ft2,
+        )
 
     def test_range_beyond_model_validity_reports_divergence(self) -> None:
         # Past ~3,000 nm the fixed point runs away from the default 50,000 lb start.
