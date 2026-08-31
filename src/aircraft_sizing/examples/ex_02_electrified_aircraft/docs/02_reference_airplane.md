@@ -28,6 +28,18 @@ An *"instructive example"* using a reference airplane from **Dr. Brian German** 
 | Cruise airspeed | ~110 KTAS | "maybe 110 KTAS but not really directly used here" |
 | Lift-to-drag ratio $(L/D)$ | 14 | matched to cruise speed |
 
+> **Atmosphere at the quoted cruise altitude.** For reference, the ICAO standard
+> atmosphere at **4,500 ft (1,371.6 m)**, computed with the [`ambiance`](https://pypi.org/project/ambiance/) package:
+> $\rho = 1.0717$ kg/m³, $a = 334.99$ m/s, $T = 279.24$ K, $p = 85.900$ kPa.
+>
+> None of these enter the arithmetic below. The electrified range equation
+> $R = E^{*}\,\eta\,(1/g)\,(L/D)\,(1 - m_\text{empty}/m - m_\text{payload}/m)$ has **no
+> density term** — altitude reaches it only indirectly, through whatever $L/D$ and
+> airspeed the designer picks for that condition. That is the opposite of the
+> [ASW example](../../ex_01_asw/docs/ex_01_asw_sizing.md), where the Breguet *range*
+> equation divides by true airspeed and so the standard-atmosphere speed of sound
+> does drive the sizing loop.
+
 ## Mission Segments (Power & Time)
 
 | Segment | Time $\Delta t$ | Battery power $P_B$ |

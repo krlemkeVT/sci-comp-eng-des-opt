@@ -126,6 +126,28 @@ The E-19 answer is a **parallel hybrid**: fly the nominal mission **fully electr
 | Climb (23.65, AEO, SL) | 1.52 m/s & 4% gradient | flaps TO, gear up |
 | Climb gradient (23.67 OEI) | 1.2% @ 5,000 ft; 0.6% @ SL | one engine inoperative |
 
+> **ISA cross-check.** The densities above are the paper's, reproduced as published.
+> Against the ICAO standard atmosphere (computed with [`ambiance`](https://pypi.org/project/ambiance/)):
+>
+> | Condition | Altitude | Paper $\rho$ | ISA $\rho$ | Difference |
+> |---|---|---|---|---|
+> | Cruise | 3,048 m (10,000 ft) | 0.9046 | 0.9048 | −0.015 % |
+> | Service ceiling | 7,620 m (25,000 ft) | 0.5489 | 0.5495 | −0.106 % |
+>
+> The difference is not rounding — it is reproducible. The companion code's
+> `isa_density_kg_per_m3` (`special_functions.py:5`) feeds the **geometric** altitude
+> straight into the troposphere lapse law, skipping the geopotential conversion
+> $H = r_\oplus h/(r_\oplus + h)$ that the ICAO definition (and `ambiance`) applies
+> first. Running that function reproduces the paper's 0.9046 and 0.5489 exactly, and
+> the error behaves as that explanation predicts: zero at sea level, growing with
+> altitude (−0.015 % at 3 km, −0.106 % at 7.6 km).
+>
+> At a tenth of a percent this is far inside conceptual-sizing tolerance, so nothing
+> downstream changes, and the values above are kept as the paper publishes them so this
+> document keeps quoting its source faithfully. For completeness, the full ISA state is
+> $a = 328.39$ m/s, $T = 268.35$ K, $p = 69.695$ kPa at cruise and
+> $a = 309.71$ m/s, $T = 238.68$ K, $p = 37.650$ kPa at the ceiling.
+
 ### Step 2 — Category & configuration
 
 The paper's **aircraft categories** (Table 1) place the E-19 as a **Commuter** (Part 23, 12,500–19,000 lb, twin turboprop):
@@ -255,6 +277,23 @@ Constraint inputs (Table 26; `E_19_Worked_Example.ipynb` cell 10):
 | $V_s$ | $s_\text{land}$ | $s_\text{TO}$ | $V_\text{cr}$ | climb grad | ROC | $\rho_\text{SL}$ | $\rho_\text{ceil}$ | $\rho_\text{cr}$ | $\rho_\text{climb}$ | $\eta_p$ |
 |---|---|---|---|---|---|---|---|---|---|---|
 | 43.1 | 1200 m | 1440 m | 82.3 | 0.06 | 1.52 | 1.225 | 0.549 | 0.905 | 1.100 | 0.8 |
+
+The four densities are the constraint diagram's four flight conditions. Inverting each
+through the standard atmosphere ([`ambiance`](https://pypi.org/project/ambiance/)'s `Atmosphere.from_density`) recovers
+the altitude it stands for:
+
+| Input | Value [kg/m³] | Equivalent ISA altitude | Condition |
+|---|---|---|---|
+| $\rho_\text{SL}$ | 1.225 | 0 m (sea level) | stall, landing, take-off, OEI @ SL |
+| $\rho_\text{climb}$ | 1.100 | 1,107 m (3,633 ft) | AEO climb reference |
+| $\rho_\text{cr}$ | 0.905 | 3,046 m (9,992 ft) | cruise / max speed |
+| $\rho_\text{ceil}$ | 0.549 | 7,628 m (25,027 ft) | service ceiling |
+
+Three land on the TLAR altitudes as expected. $\rho_\text{climb} = 1.100$ is the one
+that does **not** correspond to any altitude quoted in the requirements — it sits
+between sea level and the 5,000 ft OEI condition, so it is a mid-climb reference the
+companion code chooses rather than a stated requirement. Worth knowing before reusing
+the table: it is a modelling choice, not a TLAR.
 
 Computed constraint values (reproduced from code):
 
