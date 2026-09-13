@@ -9,7 +9,7 @@ gets its Jacobian: **analytic JAX gradients** versus **finite difference**.
 Reproduce every number and figure below with:
 
 ```bash
-python lessons/lesson_02_iterative_methods/compare_solvers.py
+python lessons/lesson_02_iterative_methods/asw/compare_solvers.py
 ```
 
 which writes `outputs/solver_comparison.md` and `outputs/convergence.png`.

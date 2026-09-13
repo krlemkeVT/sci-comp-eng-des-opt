@@ -2,7 +2,7 @@
 
 Run from the repository root (with the ``eng-des-opt-course`` environment active)::
 
-    python lessons/lesson_02_iterative_methods/compare_solvers.py
+    python lessons/lesson_02_iterative_methods/asw/compare_solvers.py
 
 It solves the identical ASW model with four nonlinear solvers, counts the
 iterations and function/derivative evaluations each one costs, plots the residual
@@ -18,7 +18,8 @@ from pathlib import Path
 
 import numpy as np
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+# .../lessons/lesson_02_iterative_methods/asw/compare_solvers.py -> repo root
+REPO_ROOT = Path(__file__).resolve().parents[3]
 SRC_ROOT = REPO_ROOT / "src"
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
