@@ -21,11 +21,11 @@ active (`conda activate eng-des-opt-course`; see the top-level [README](../READM
    python lessons/lesson_01_dsm/generate_shapes.py # -> outputs/shape_*.pdf/.png
    ```
 
-2. **[Iterative methods](lesson_02_iterative_methods/docs/lesson_02_iterative_methods.md)**
+2. **[Iterative methods](lesson_02_iterative_methods/asw/docs/lesson_02_iterative_methods.md)**
    — fixed point vs Newton vs Broyden, counting iterations and
    function/derivative evaluations; analytic (JAX) gradients vs finite difference.
    ```bash
-   python lessons/lesson_02_iterative_methods/compare_solvers.py
+   python lessons/lesson_02_iterative_methods/asw/compare_solvers.py
    # -> outputs/solver_comparison.md, outputs/convergence.png
    ```
 

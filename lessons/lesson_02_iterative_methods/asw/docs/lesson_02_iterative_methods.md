@@ -9,7 +9,7 @@ gets its Jacobian: **analytic JAX gradients** versus **finite difference**.
 Reproduce every number and figure below with:
 
 ```bash
-python lessons/lesson_02_iterative_methods/compare_solvers.py
+python lessons/lesson_02_iterative_methods/asw/compare_solvers.py
 ```
 
 which writes `outputs/solver_comparison.md` and `outputs/convergence.png`.
@@ -69,10 +69,10 @@ JAX gradients where derivatives are used):
 
 | Solver | Iterations | Function evals | Derivative evals | Converged TOGW [lb] |
 |---|---|---|---|---|
-| Fixed point (Gauss–Seidel) | 17 | 85 | 0 | 57 618.64 |
-| Fixed point + Aitken | 7 | 35 | 0 | 57 618.64 |
-| Newton | 7 | 110 | 35 | 57 618.64 |
-| Broyden | 11 | 285 | 20 | 57 618.64 |
+| Fixed point (Gauss–Seidel) | 17 | 85 | 0 | 57 615.87 |
+| Fixed point + Aitken | 7 | 35 | 0 | 57 615.87 |
+| Newton | 7 | 110 | 35 | 57 615.87 |
+| Broyden | 11 | 285 | 20 | 57 615.87 |
 
 All four land on the **same** takeoff gross weight — the answer is a property of the
 model, not the solver. What differs is the *path* and the *cost*:
@@ -110,8 +110,8 @@ Running Newton both ways:
 
 | Derivative source | Iterations | Function evals | Derivative evals | Converged TOGW [lb] |
 |---|---|---|---|---|
-| JAX (analytic) | 7 | 110 | 35 | 57 618.64 |
-| Finite difference | 7 | 243 | 0 | 57 618.64 |
+| JAX (analytic) | 7 | 110 | 35 | 57 615.87 |
+| Finite difference | 7 | 243 | 0 | 57 615.87 |
 
 Finite difference replaces the 35 analytic linearizations with **~130 extra
 function evaluations** (243 vs 110) — and would only get more expensive as the
@@ -130,9 +130,9 @@ re-runs the whole solve:
 
 | Input | Analytic (JAX) | Finite difference | Relative difference |
 |---|---|---|---|
-| `aero.wing_aspect_ratio` | −5.0667e+03 | −5.0667e+03 | ~3e−08 |
-| `prop.tsfc_cruise_per_hr` | 1.1151e+05 | 1.1151e+05 | ~2e−10 |
-| `mission.range_ft` | 6.1175e−03 | 6.1175e−03 | ~7e−12 |
+| `aero.wing_aspect_ratio` | −5.0661e+03 | −5.0661e+03 | ~3e−08 |
+| `prop.tsfc_cruise_per_hr` | 1.1150e+05 | 1.1150e+05 | ~2e−10 |
+| `mission.range_ft` | 6.1167e−03 | 6.1167e−03 | ~2e−11 |
 
 They agree — confirming the analytic derivatives are correct — but the costs differ
 in kind. The analytic total is **one linear solve** after convergence. The finite

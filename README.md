@@ -64,7 +64,7 @@ arranged. Chapter numbers refer to Martins & Ning.
 | # | Week of | Topic | Project milestone | Reference & repo |
 |---|---|---|---|---|
 | 1 | Aug 31 | Course kickoff; **Design Structure Matrices** — N2 and XDSM; scoping your project; tour of the worked examples | Draft **project problem statement** (objective, design variables, constraints) | Ch. 1–2, 13.2–13.3; [Lesson 1 — DSM](lessons/lesson_01_dsm/docs/lesson_01_dsm.md); [ASW app](#quickstart-run-the-asw-streamlit-example), [ex_01](src/aircraft_sizing/examples/ex_01_asw/docs/ex_01_asw_sizing.md), [ex_02](src/aircraft_sizing/examples/ex_02_electrified_aircraft/docs/ex_02_electrified_aircraft.md), [ex_03](src/aircraft_sizing/examples/ex_03_e19_hybrid_electric/docs/ex_03_electrified_aircraft_sizing.md) |
-| 2 | Sep 14 | **Iterative methods** — fixed-point (Gauss–Seidel), Newton, Broyden; convergence and cost | **N2 diagram** of your MDO problem | Ch. 3, App. B–C; [Lesson 2 — Iterative methods](lessons/lesson_02_iterative_methods/docs/lesson_02_iterative_methods.md) |
+| 2 | Sep 14 | **Iterative methods** — fixed-point (Gauss–Seidel), Newton, Broyden; convergence and cost | **N2 diagram** of your MDO problem | Ch. 3, App. B–C; [Lesson 2 — Iterative methods](lessons/lesson_02_iterative_methods/asw/docs/lesson_02_iterative_methods.md) |
 | 3 | Sep 28 | **Gradient-based optimization & computing derivatives** — line search, BFGS, SQP; finite difference, complex step, JAX AD, adjoint | First runnable **JAX + OpenMDAO** script (agentic AI workflow) | Ch. 4–6; Lesson 2 (JAX vs finite difference) |
 | 4 | Oct 12 | **Mid-semester presentations** — project-idea pitch | **Pitch**: problem statement, N2, and planned approach (incl. uncertainty sources / k-factors) | — |
 | 5 | Oct 26 | **Surrogate-based optimization & optimization under uncertainty** — surrogate modeling with SMT; UQ with UM-Bridge; robust / reliability-based design | Design of experiments + **data set on VT-ARC HPC** | Ch. 10, 12 |
@@ -176,7 +176,7 @@ python -m pip install -e .
 ### Course lessons
 
 - [Lesson 1 — Design Structure Matrices (DSM), N2, and XDSM](lessons/lesson_01_dsm/docs/lesson_01_dsm.md)
-- [Lesson 2 — Iterative methods: fixed-point vs Newton vs Broyden, gradients vs finite difference](lessons/lesson_02_iterative_methods/docs/lesson_02_iterative_methods.md)
+- [Lesson 2 — Iterative methods: fixed-point vs Newton vs Broyden, gradients vs finite difference](lessons/lesson_02_iterative_methods/asw/docs/lesson_02_iterative_methods.md)
 
 ### Reference notes
 
