@@ -1,0 +1,96 @@
+
+%%% Preamble Requirements %%%
+% \usepackage{geometry}
+% \usepackage{amsfonts}
+% \usepackage{amsmath}
+% \usepackage{amssymb}
+% \usepackage{tikz}
+
+% Optional packages such as sfmath set through python interface
+% \usepackage{}
+
+% \usetikzlibrary{arrows,chains,positioning,scopes,shapes.geometric,shapes.misc,shadows}
+
+%%% End Preamble Requirements %%%
+
+\input{"C:/Users/katrl/anaconda3/envs/eng-des-opt-course/Lib/site-packages/pyxdsm/diagram_styles"}
+\begin{tikzpicture}
+
+\matrix[MatrixSetup]{
+%Row 0
+\node [DataIO] (output_opt) {$\text{Budget}$};&
+&
+&
+&
+&
+\\
+%Row 1
+\node [MDA] (opt) {$\begin{array}{c}\text{Optimizer}\end{array}$};&
+\node [DataInter] (opt-aircraft) {$\text{Fleet Composition}$};&
+\node [DataInter] (opt-perf) {$\text{Cruise Dist., Loiter Time, Payload size, Sortie count}$};&
+\node [DataInter] (opt-sim) {$\text{tactics, T/O and land location}$};&
+&
+\\
+%Row 2
+&
+\node [Function] (aircraft) {$\begin{array}{c}\text{Fixed Aircraft}\end{array}$};&
+\node [DataInter] (aircraft-perf) {$\text{Fuel cap, MTOW, T/O and Land distances, TSFC, Payload cap}$};&
+&
+&
+\\
+%Row 3
+&
+&
+\node [Function] (perf) {$\begin{array}{c}\text{Aircraft Performance}\end{array}$};&
+\node [DataInter] (perf-sim) {$\text{Fuel burn, Refuel rate, Reload rate}$};&
+&
+\node [DataIO] (right_output_perf) {$\text{Operating Ceiling, Max Range, Max Endurance}$};\\
+%Row 4
+\node [DataInter] (sim-opt) {$\text{MoE}$};&
+&
+&
+\node [Function] (sim) {$\begin{array}{c}\text{Simulation}\end{array}$};&
+&
+\node [DataIO] (right_output_sim) {$\text{Mission}$};\\
+%Row 5
+&
+&
+&
+&
+&
+\\
+};
+
+% XDSM process chains
+{ [start chain=process]
+ \begin{pgfonlayer}{process} 
+\chainin (opt);
+\chainin (aircraft) [join=by ProcessHVA];
+\chainin (perf) [join=by ProcessHVA];
+\chainin (sim) [join=by ProcessHVA];
+\chainin (opt) [join=by ProcessHVA];
+\end{pgfonlayer}
+}
+
+\begin{pgfonlayer}{data}
+\path
+% Horizontal edges
+(opt) edge [DataLine] (opt-aircraft)
+(opt) edge [DataLine] (opt-perf)
+(opt) edge [DataLine] (opt-sim)
+(aircraft) edge [DataLine] (aircraft-perf)
+(perf) edge [DataLine] (perf-sim)
+(sim) edge [DataLine] (sim-opt)
+(sim) edge [DataLine] (right_output_sim)
+(perf) edge [DataLine] (right_output_perf)
+% Vertical edges
+(opt-aircraft) edge [DataLine] (aircraft)
+(opt-perf) edge [DataLine] (perf)
+(opt-sim) edge [DataLine] (sim)
+(aircraft-perf) edge [DataLine] (perf)
+(perf-sim) edge [DataLine] (sim)
+(sim-opt) edge [DataLine] (opt)
+(opt) edge [DataLine] (output_opt);
+\end{pgfonlayer}
+
+\end{tikzpicture}

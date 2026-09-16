@@ -22,7 +22,7 @@ SRC_ROOT = REPO_ROOT / "src"
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
-from aircraft_sizing.examples.ex_01_asw.viz.xdsm import asw_sizing_xdsm as xdsm_module  # noqa: E402
+from firefightingSoS.lesson01 import fireSoS_xdsm as xdsm_module  # noqa: E402
 
 OUTPUT_DIR = Path(__file__).resolve().parent / "outputs"
 

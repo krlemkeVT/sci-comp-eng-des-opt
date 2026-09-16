@@ -13,7 +13,7 @@
 
 %%% End Preamble Requirements %%%
 
-\input{"C:/Users/darsh/miniconda3/envs/eng-des-opt-course/Lib/site-packages/pyxdsm/diagram_styles"}
+\input{"C:/Users/katrl/anaconda3/envs/eng-des-opt-course/Lib/site-packages/pyxdsm/diagram_styles"}
 \begin{tikzpicture}
 
 \matrix[MatrixSetup]{
